@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grades - Saint Louis University</title>
+    <link rel="stylesheet" href="grades-styles.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="university-logo">
+                <h1>Saint Louis University</h1>
+                <p>Student Portal</p>
+            </div>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="studentNumber">Student Number:</label>
+                    <input type="text" id="studentNumber" name="student_number" required placeholder="e.g., 2024001">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+                <div class="demo-credentials">
+                    <p><strong>Demo Credentials:</strong></p>
+                    <p>Student: 2024001 / password</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="main-container" style="display: none;">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <span class="info-icon">📊</span>
+                <span class="header-title">Grades (FIRST SEMESTER, 2025-2026)</span>
+            </div>
+            <div class="header-right">
+                <span class="student-info" id="headerStudentInfo">QUERUBIN RIVERA</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar">
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-text">Home</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">Schedule</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">✅</span>
+                            <span class="nav-text">Attendance</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">💰</span>
+                            <span class="nav-text">Statement of Accounts</span>
+                        </a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Grades</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📄</span>
+                            <span class="nav-text">Transcript of Records</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Curriculum Checklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">🏥</span>
+                            <span class="nav-text">Medical Record</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Personal Details</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📝</span>
+                            <span class="nav-text">Journal/Periodical</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link">
+                            <span class="nav-icon">📚</span>
+                            <span class="nav-text">Downloadables / About SLU</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Grades Notice -->
+                <div class="grades-notice">
+                    <p><strong>NOTE:</strong> Deadline of submission for completion of Students is <strong>February 04, 2026.</strong> NC due to NFE/INC if not completed, the final grades shall become permanent.</p>
+                </div>
+
+                <!-- Grades Table -->
+                <div class="grades-table-container">
+                    <table class="grades-table" id="gradesTable">
+                        <thead>
+                            <tr>
+                                <th>Class Code</th>
+                                <th>Course Number</th>
+                                <th>Units</th>
+                                <th>Prelim Grade</th>
+                                <th>Midterm Grade</th>
+                                <th>Tentative Final Grade</th>
+                                <th>Final Grade</th>
+                                <th>Weights</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gradesTableBody">
+                            <tr>
+                                <td colspan="8" class="loading-cell">Loading grades...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Legend Section -->
+                <div class="legend-section">
+                    <div class="legend-title">LEGEND:</div>
+                    <div class="legend-content">
+                        <div class="legend-column">
+                            <div class="legend-row">
+                                <span class="legend-grade">P</span>
+                                <span class="legend-desc">Passed</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-grade">INC</span>
+                                <span class="legend-desc">Incomplete</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-grade">D</span>
+                                <span class="legend-desc">Dropped</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-grade">NC</span>
+                                <span class="legend-desc">No Credit</span>
+                            </div>
+                        </div>
+                        <div class="legend-column">
+                            <div class="legend-row">
+                                <span class="legend-grade">HP</span>
+                                <span class="legend-desc">High Pass</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-grade">WP</span>
+                                <span class="legend-desc">Withdrawal w/ Permission</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-grade">F</span>
+                                <span class="legend-desc">Failure</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-grade">NFE</span>
+                                <span class="legend-desc">No Final Examination</span>
+                            </div>
+                        </div>
+                        <div class="legend-column">
+                            <div class="legend-section-title">FOR UNDERGRADUATE</div>
+                            <div class="legend-row">
+                                <span class="legend-desc">Passing Grade</span>
+                                <span class="legend-grade">75%</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-desc">Failure</span>
+                                <span class="legend-grade">Below 75%</span>
+                            </div>
+                        </div>
+                        <div class="legend-column">
+                            <div class="legend-section-title">FOR GRADUATE SCHOOL</div>
+                            <div class="legend-row">
+                                <span class="legend-desc">Passing Grade</span>
+                                <span class="legend-grade">85%</span>
+                            </div>
+                            <div class="legend-row">
+                                <span class="legend-desc">Failure</span>
+                                <span class="legend-grade">Below 85%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <footer class="footer">
+                    <p>Copyright © 2025 <strong>Saint Louis University Inc.</strong> All rights reserved.</p>
+                </footer>
+            </main>
+        </div>
+    </div>
+
+    <script src="grades.js"></script>
+</body>
+</html>
