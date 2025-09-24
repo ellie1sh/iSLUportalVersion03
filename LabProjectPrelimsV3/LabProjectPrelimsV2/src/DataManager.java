@@ -50,6 +50,66 @@ public class DataManager {
     private static File getUserPasswordFile() { return resolveFile(USER_PASSWORD_FILE); }
     private static File getPaymentLogsFile() { return resolveFile(PAYMENT_LOGS_FILE); }
 
+    // Headers for data files
+    private static final String DATABASE_HEADER = "ID,LAST_NAME,FIRST_NAME,MIDDLE_NAME,DATE_OF_BIRTH,PASSWORD|PROFILE_DATA";
+    private static final String USERPASS_HEADER = "ID,PASSWORD";
+    private static final String PAYMENTS_HEADER = "DATE,CHANNEL,REFERENCE,AMOUNT,STUDENT_ID";
+
+    static {
+        // Ensure headers exist at the top of data files upon class load
+        ensureHeaderAtTop(getDatabaseFile(), DATABASE_HEADER, "ID,");
+        ensureHeaderAtTop(getUserPasswordFile(), USERPASS_HEADER, "ID,");
+        ensureHeaderAtTop(getPaymentLogsFile(), PAYMENTS_HEADER, "DATE,");
+    }
+
+    /**
+     * Ensures the specified header is present as the first line of the file.
+     * If file is empty or missing the header, the header is inserted at the top.
+     */
+    private static void ensureHeaderAtTop(File file, String header, String headerPrefix) {
+        try {
+            if (!file.exists()) {
+                // Create file with header
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                    writer.write(header);
+                    writer.newLine();
+                }
+                return;
+            }
+
+            // Read first line to check header
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String firstLine = reader.readLine();
+                if (firstLine == null) {
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                        writer.write(header);
+                        writer.newLine();
+                    }
+                    return;
+                }
+                if (!firstLine.startsWith(headerPrefix)) {
+                    // Prepend header preserving existing content
+                    java.util.List<String> lines = new java.util.ArrayList<>();
+                    lines.add(header);
+                    String line;
+                    if (firstLine != null) {
+                        lines.add(firstLine);
+                    }
+                    while ((line = reader.readLine()) != null) {
+                        lines.add(line);
+                    }
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                        for (String l : lines) {
+                            writer.write(l);
+                            writer.newLine();
+                        }
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
     public static boolean databaseExists() {
         return getDatabaseFile().exists();
     }
@@ -70,6 +130,10 @@ public class DataManager {
             try (BufferedReader reader = new BufferedReader(new FileReader(databaseFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    // Skip header or empty lines
+                    if (line.trim().isEmpty() || line.startsWith("ID,")) {
+                        continue;
+                    }
                     // Skip empty lines
                     if (line.trim().isEmpty()) {
                         continue;
@@ -112,6 +176,10 @@ public class DataManager {
             try (BufferedReader reader = new BufferedReader(new FileReader(databaseFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    // Skip header or empty lines
+                    if (line.trim().isEmpty() || line.startsWith("ID,")) {
+                        continue;
+                    }
                     // Skip empty lines
                     if (line.trim().isEmpty()) {
                         continue;
@@ -154,6 +222,7 @@ public class DataManager {
         try {
             // Save to Database.txt
             File dbFile = getDatabaseFile();
+            ensureHeaderAtTop(dbFile, DATABASE_HEADER, "ID,");
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(dbFile, true))) {
                 String dbEntry = studentInfo.toDatabaseFormat();
                 writer.write(dbEntry);
@@ -163,8 +232,9 @@ public class DataManager {
             
             // Save to UserPasswordID.txt
             File credsFile = getUserPasswordFile();
+            ensureHeaderAtTop(credsFile, USERPASS_HEADER, "ID,");
             try (BufferedWriter logWriter = new BufferedWriter(new FileWriter(credsFile, true))) {
-                String credsEntry = "ID: " + studentInfo.getId() + " | Password: " + studentInfo.getPassword();
+                String credsEntry = studentInfo.getId() + "," + studentInfo.getPassword();
                 logWriter.write(credsEntry);
                 logWriter.newLine();
                 logWriter.flush(); // Ensure data is written immediately
@@ -220,6 +290,7 @@ public class DataManager {
     public static void logPaymentTransaction(String channelName, double amount, String studentID) {
         try {
             File logFile = getPaymentLogsFile();
+            ensureHeaderAtTop(logFile, PAYMENTS_HEADER, "DATE,");
             
             java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("MM/dd/yyyy hh:mm a");
             String currentDateTime = dateFormat.format(new java.util.Date());
@@ -252,6 +323,10 @@ public class DataManager {
                 try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
+                        // Skip header or empty lines
+                        if (line.trim().isEmpty() || line.startsWith("DATE,")) {
+                            continue;
+                        }
                         String[] parts = line.split(",");
                         if (parts.length >= 5) {
                             String transactionStudentID = parts[4].trim();
@@ -331,6 +406,8 @@ public class DataManager {
                 try (BufferedReader reader = new BufferedReader(new FileReader(dbFile))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
+                        // Skip header or empty lines
+                        if (line.trim().isEmpty() || line.startsWith("ID,")) continue;
                         if (line.trim().isEmpty()) continue;
                         
                         System.out.println("DEBUG: Checking line: " + line);
@@ -376,10 +453,15 @@ public class DataManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.trim().isEmpty()) continue;
-                        String[] parts = line.split(",");
+                        // Preserve header line
+                        if (line.startsWith("ID,")) { lines.add(line); continue; }
+
+                        String[] mainParts = line.split("\\|", 2);
+                        String basicInfo = mainParts[0];
+                        String[] parts = basicInfo.split(",");
                         if (parts.length > 0 && parts[0].equals(studentID)) {
-                            // Append profile data to the existing line
-                            line = line + "|" + profileData;
+                            // Replace or add profile data part
+                            line = basicInfo + "|" + profileData;
                         }
                         lines.add(line);
                     }
@@ -417,11 +499,19 @@ public class DataManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.trim().isEmpty()) continue;
-                        String[] parts = line.split(",");
+                        // Preserve header line
+                        if (line.startsWith("ID,")) { lines.add(line); continue; }
+
+                        String[] wholeParts = line.split("\\|", 2);
+                        String basicInfo = wholeParts[0];
+                        String profilePart = wholeParts.length > 1 ? wholeParts[1] : null;
+
+                        String[] parts = basicInfo.split(",");
                         if (parts.length > 0 && parts[0].equals(studentID)) {
-                            // Update the password (last field)
+                            // Update the password (last field of basic info)
                             parts[parts.length - 1] = newPassword;
-                            line = String.join(",", parts);
+                            basicInfo = String.join(",", parts);
+                            line = profilePart != null ? (basicInfo + "|" + profilePart) : basicInfo;
                         }
                         lines.add(line);
                     }
@@ -444,8 +534,10 @@ public class DataManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.trim().isEmpty()) continue;
-                        if (line.contains("ID: " + studentID)) {
-                            line = "ID: " + studentID + " | Password: " + newPassword;
+                        if (line.startsWith("ID,")) { lines.add(line); continue; }
+                        String[] parts = line.split(",");
+                        if (parts.length >= 2 && parts[0].trim().equals(studentID)) {
+                            line = studentID + "," + newPassword;
                         }
                         lines.add(line);
                     }
@@ -465,6 +557,14 @@ public class DataManager {
             System.err.println("Error updating password: " + e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Placeholder for future faculty attendance updates integration.
+     * To be implemented when faculty module is ready.
+     */
+    public static void updateAttendanceRecord(String facultyID, String studentID, String classCode, String date, boolean present) {
+        // Intentionally left blank for future integration with faculty account
     }
 }
 
