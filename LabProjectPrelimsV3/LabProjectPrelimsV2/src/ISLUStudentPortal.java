@@ -3,6 +3,8 @@ import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import javax.swing.Timer;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalTime;
@@ -35,9 +37,10 @@ public class ISLUStudentPortal extends JFrame {
         this.studentID = studentID;
         this.studentName = getStudentNameFromDatabase(studentID);
         
-        // Initialize random amounts for each account
+        // Initialize random amounts for statement
         this.amountDue = generateRandomAmountDue();
-        this.currentBalance = generateRandom5DigitAmount();
+        this.remainingBalance = generateRandom5DigitAmount();
+        this.overpaymentCredit = 0.0;
         
         initializeComponents();
         setupLayout(PortalUtils.createHomeSublist());
@@ -2386,6 +2389,11 @@ public class ISLUStudentPortal extends JFrame {
         return "STUDENT NAME NOT FOUND";
     }
 
+    // Utility to format pesos
+    private String peso(double value) {
+        return String.format("P %,.2f", value);
+    }
+
     /**
      * Creates the Statement of Accounts panel matching the UI design
      */
@@ -2442,6 +2450,9 @@ public class ISLUStudentPortal extends JFrame {
         contentPanel.setBackground(Color.WHITE);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
+        // Recompute remaining balance from charges and transactions to reflect latest state
+        recomputeRemainingFromLogs();
+
         // Student Info
         JPanel studentInfoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         studentInfoPanel.setBackground(Color.WHITE);
@@ -2473,20 +2484,20 @@ public class ISLUStudentPortal extends JFrame {
         amountPanel.setLayout(new BoxLayout(amountPanel, BoxLayout.Y_AXIS));
         amountPanel.setBackground(Color.WHITE);
         
-        JLabel amountDueLabel = new JLabel("Your amount due for Prelims is:");
+        JLabel amountDueLabel = new JLabel("Your amount due for PRELIM is:");
         amountDueLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         amountPanel.add(amountDueLabel);
         
-        JLabel amountDueValue = new JLabel("P " + String.format("%.2f", amountDue));
+        JLabel amountDueValue = new JLabel(String.format("P %,.2f", amountDue));
         amountDueValue.setFont(new Font("Arial", Font.BOLD, 24));
-        amountDueValue.setForeground(Color.BLACK);
+        amountDueValue.setForeground(Color.RED);
         amountDueValueLabel = amountDueValue; // Store reference for updates
         amountPanel.add(amountDueValue);
         
         contentPanel.add(amountPanel);
         contentPanel.add(Box.createVerticalStrut(10));
 
-        // Overpayment Section
+        // Remaining Balance Section
         JPanel overpaymentPanel = new JPanel();
         overpaymentPanel.setLayout(new BoxLayout(overpaymentPanel, BoxLayout.Y_AXIS));
         overpaymentPanel.setBackground(Color.WHITE);
@@ -2497,11 +2508,11 @@ public class ISLUStudentPortal extends JFrame {
         overpaymentLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         overpaymentPanel.add(overpaymentLabel);
         
-        JLabel overpaymentValue = new JLabel("P (" + String.format("%.2f", currentBalance) + ")");
-        overpaymentValue.setFont(new Font("Arial", Font.BOLD, 24));
-        overpaymentValue.setForeground(Color.BLACK);
-        overpaymentValueLabel = overpaymentValue; // Store reference for updates
-        overpaymentPanel.add(overpaymentValue);
+        JLabel remBalValue = new JLabel(String.format("P %,.2f", remainingBalance));
+        remBalValue.setFont(new Font("Arial", Font.BOLD, 24));
+        remBalValue.setForeground(Color.RED);
+        remainingBalanceValueLabel = remBalValue; // Store reference for updates
+        overpaymentPanel.add(remBalValue);
         
         contentPanel.add(overpaymentPanel);
         contentPanel.add(Box.createVerticalStrut(15));
@@ -2522,18 +2533,11 @@ public class ISLUStudentPortal extends JFrame {
         contentPanel.add(prelimStatusLabel);
         contentPanel.add(Box.createVerticalStrut(10));
 
-        // Finals Status
-        String statusText = amountDue <= 0 ? 
-            "FINALS STATUS: PAID. Permitted to take the exams." : 
-            "FINALS STATUS: UNPAID. Payment required to take exams.";
-        Color statusColor = amountDue <= 0 ? 
-            new Color(0, 150, 0) : // Green for paid
-            new Color(200, 0, 0);   // Red for unpaid
-        
-        JLabel statusLabel = new JLabel(statusText);
-        statusLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        statusLabel.setForeground(statusColor);
-        contentPanel.add(statusLabel);
+        // Note for verification
+        JLabel verifyNote = new JLabel("For verification on unposted payments after 'as of' date, please email sass@slu.edu.ph");
+        verifyNote.setFont(new Font("Arial", Font.PLAIN, 11));
+        verifyNote.setForeground(new Color(120,120,120));
+        contentPanel.add(verifyNote);
         contentPanel.add(Box.createVerticalStrut(20));
 
         // Breakdown of Fees
@@ -2567,31 +2571,32 @@ public class ISLUStudentPortal extends JFrame {
         
         panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Table with dynamic data including payment receipts
+        // Table with dynamic data including fee breakdown and payments
         String[] columnNames = {"Date", "Description", "Amount"};
         java.util.List<Object[]> dataList = new java.util.ArrayList<>();
-        
-        // Beginning balance
-        dataList.add(new Object[]{"", "BEGINNING BALANCE", String.format("P %.2f", amountDue + currentBalance)});
-        
-        // Add payment transactions as receipts
-        List<PaymentTransaction> transactions = DataManager.loadPaymentTransactions(studentID);
-        for (PaymentTransaction transaction : transactions) {
-            String description = transaction.getChannel() + " - " + transaction.getReference();
-            dataList.add(new Object[]{
-                transaction.getDate(),
-                description,
-                "(" + transaction.getAmount() + ")"
-            });
+
+        // Fixed-looking rows like in screenshots
+        dataList.add(new Object[]{"08/07/2025", "BEGINNING BALANCE", String.format("P %,.2f", startingBalance)});
+        if (recentPayment > 0) {
+            dataList.add(new Object[]{"08/20/2025", "PAYMENT RECEIVED (Auto-Posted)", String.format("(P %,.2f)", recentPayment)});
         }
-        
-        // Current balance
-        if (amountDue > 0) {
-            dataList.add(new Object[]{"", "CURRENT BALANCE DUE", String.format("P %.2f", amountDue)});
-        } else {
-            dataList.add(new Object[]{"", "OVERPAYMENT BALANCE", String.format("P (%.2f)", currentBalance)});
+        dataList.add(new Object[]{"09/15/2025", "TUITION FEE @820.00/u", String.format("P %,.2f", tuition820)});
+        dataList.add(new Object[]{"09/15/2025", "TUITION FEE @1167.00/u", String.format("P %,.2f", tuition1167)});
+        dataList.add(new Object[]{"09/15/2025", "TUITION FEE @434.00/u", String.format("P %,.2f", tuition434)});
+        dataList.add(new Object[]{"09/15/2025", "OTHER FEES", String.format("P %,.2f", otherFees)});
+        dataList.add(new Object[]{"09/15/2025", "OTHER/LAB.FEE(S)", String.format("P %,.2f", labFees)});
+        dataList.add(new Object[]{"09/15/2025", "PMS WaterDrinkingSystem (V100486)", String.format("P %,.2f", pmsFee)});
+        dataList.add(new Object[]{"09/15/2025", "Internationalization Fee (V100487)", String.format("P %,.2f", intlFee)});
+
+        // Append actual transactions from logs
+        java.util.List<PaymentTransaction> transactions = DataManager.loadPaymentTransactions(studentID);
+        for (PaymentTransaction tx : transactions) {
+            dataList.add(new Object[]{tx.getDate(), "PAYMENT RECEIVED (" + tx.getChannel() + ")", "(" + tx.getAmount() + ")"});
         }
-        
+
+        // Remaining balance footer
+        dataList.add(new Object[]{"", "REMAINING BALANCE", String.format("P %,.2f", remainingBalance)});
+
         Object[][] data = dataList.toArray(new Object[dataList.size()][]);
 
         DefaultTableModel model = new DefaultTableModel(data, columnNames) {
@@ -2601,7 +2606,7 @@ public class ISLUStudentPortal extends JFrame {
             }
         };
         JTable table = new JTable(model);
-        table.setRowHeight(30);
+        table.setRowHeight(28);
         table.getTableHeader().setBackground(new Color(240, 240, 240));
         table.setFont(new Font("Arial", Font.PLAIN, 11));
         table.setGridColor(new Color(220, 220, 220));
@@ -2821,13 +2826,25 @@ public class ISLUStudentPortal extends JFrame {
         return panel;
     }
 
-    // Fields to track payment information
-    private double currentBalance; // Current overpayment amount (randomized)
-    private double amountDue; // Current amount due (randomized)
-    private JLabel overpaymentValueLabel; // Reference to update the display
+    // Fields to track statement and payments
+    private double amountDue; // Prelim amount due
+    private double remainingBalance; // Remaining balance as of date
+    private double overpaymentCredit; // Credit if paid > due
+    private JLabel remainingBalanceValueLabel; // Reference to update remaining balance label
     private JLabel amountDueValueLabel; // Reference to update the amount due display
     private JLabel prelimStatusLabel; // Reference to update the PRELIM STATUS display
     private DefaultTableModel paymentTableModel; // Reference to payment transactions table model
+
+    // Fee components for breakdown
+    private double startingBalance = 0.0;
+    private double recentPayment = 0.0;
+    private double tuition820 = 9020.00;
+    private double tuition1167 = 10503.00;
+    private double tuition434 = 1302.00;
+    private double otherFees = 6784.00;
+    private double labFees = 14064.00;
+    private double pmsFee = 60.00;
+    private double intlFee = 150.00;
 
     /**
      * Shows payment dialog to collect card information and process payment
@@ -2911,18 +2928,30 @@ public class ISLUStudentPortal extends JFrame {
         contentPanel.add(namePanel);
         contentPanel.add(Box.createVerticalStrut(20));
 
-        // Amount to Pay
+        // Amount to Pay (+ service charges for Dragonpay)
         JPanel amountPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 5));
         amountPanel.setBackground(Color.WHITE);
         JLabel amountLabel = new JLabel("Amount to Pay:");
         amountLabel.setPreferredSize(new Dimension(150, 25));
         amountPanel.add(amountLabel);
-        
+
         JTextField amountField = new JTextField();
         amountField.setPreferredSize(new Dimension(150, 25));
         amountPanel.add(amountField);
+
+        JLabel chargesLabel = new JLabel();
+        chargesLabel.setPreferredSize(new Dimension(300, 25));
+        chargesLabel.setForeground(new Color(120,120,120));
+        amountPanel.add(chargesLabel);
         contentPanel.add(amountPanel);
         contentPanel.add(Box.createVerticalStrut(20));
+
+        // If Dragonpay, show hint about P25 fee and dynamic total
+        if (channelName.toLowerCase().contains("dragon")) {
+            chargesLabel.setText("Note: P25.00 service charge by Dragonpay. Additional channel fees may apply.");
+        } else if (channelName.toLowerCase().contains("unionbank")) {
+            chargesLabel.setText("No extra service charge by UPay.");
+        }
 
         // Buttons panel
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
@@ -2934,9 +2963,16 @@ public class ISLUStudentPortal extends JFrame {
         submitButton.setFont(new Font("Arial", Font.BOLD, 12));
         submitButton.setPreferredSize(new Dimension(120, 35));
         submitButton.addActionListener(e -> {
+            // Adjust for service fee if Dragonpay: add 25.00 to charged amount separately as fee
+            String entered = amountField.getText();
+            String amountToCharge = entered;
+            if (channelName.toLowerCase().contains("dragon")) {
+                // We'll log the amount entered; service charge is informational only here
+                // Optionally, we could reflect in remaining balance but in screenshots it shows total bottom field
+            }
             if (processPayment(cardNumberField.getText(), cvvField.getText(), 
                              expDateField.getText(), nameField.getText(), 
-                             amountField.getText(), channelName)) {
+                             amountToCharge, channelName)) {
                 paymentDialog.dispose();
             }
         });
@@ -2991,48 +3027,27 @@ public class ISLUStudentPortal extends JFrame {
             return false;
         }
 
-        // Process payment - handle overpayment if amount exceeds amount due
-        if (amount >= amountDue) {
-            // Calculate overpayment amount
-            double overpaymentAmount = amount - amountDue;
-            
-            // Clear the amount due and add excess to overpayment
-            amountDue = 0.0;
-            currentBalance += overpaymentAmount;
-            
+        // Process payment - handle over/under relative to prelim due and remaining balance
+        double appliedToDue = Math.min(amount, amountDue);
+        amountDue -= appliedToDue;
+        double remainingPayment = amount - appliedToDue;
+
+        if (remainingPayment > 0) {
+            // Apply to remaining balance next
+            double appliedToRemaining = Math.min(remainingPayment, remainingBalance);
+            remainingBalance -= appliedToRemaining;
+            double excess = remainingPayment - appliedToRemaining;
+            if (excess > 0) {
+                overpaymentCredit += excess;
+            }
+        }
+
+        if (amountStr != null) {
             // Log the payment transaction
             logPaymentTransaction(channelName, amount);
             
             // Add payment to table
             addPaymentToTable(channelName, amount);
-            
-            // Show success message with overpayment details
-            String message = "Payment successful!\n" +
-                "Channel: " + channelName + "\n" +
-                "Amount Paid: P " + String.format("%.2f", amount) + "\n" +
-                "Amount Due: P 0.00 (FULLY PAID)\n" +
-                "Overpayment: P " + String.format("%.2f", overpaymentAmount) + "\n" +
-                "Total Overpayment Balance: P " + String.format("%.2f", currentBalance);
-            
-            JOptionPane.showMessageDialog(this, message, "Payment Successful", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            // Partial payment - just reduce amount due
-            amountDue -= amount;
-            
-            // Log the payment transaction
-            logPaymentTransaction(channelName, amount);
-            
-            // Add payment to table
-            addPaymentToTable(channelName, amount);
-            
-            // Show success message
-            JOptionPane.showMessageDialog(this, 
-                "Payment successful!\n" +
-                "Channel: " + channelName + "\n" +
-                "Amount Paid: P " + String.format("%.2f", amount) + "\n" +
-                "Remaining Amount Due: P " + String.format("%.2f", amountDue),
-                "Payment Successful", 
-                JOptionPane.INFORMATION_MESSAGE);
         }
 
         // Update the display (you would need to refresh the Statement of Accounts panel)
@@ -3058,6 +3073,34 @@ public class ISLUStudentPortal extends JFrame {
         }
         
         return result;
+    }
+
+    // Recompute remaining balance from fees and payments
+    private void recomputeRemainingFromLogs() {
+        // Sum fees
+        double totalFees = tuition820 + tuition1167 + tuition434 + otherFees + labFees + pmsFee + intlFee;
+        // Starting balance acts as previous carry-over
+        double base = startingBalance + totalFees;
+
+        // Subtract logged payments
+        double payments = 0.0;
+        java.util.List<PaymentTransaction> txs = DataManager.loadPaymentTransactions(studentID);
+        for (PaymentTransaction tx : txs) {
+            try {
+                String amt = tx.getAmount().replace("P", "").replace(",", "").trim();
+                payments += Double.parseDouble(amt);
+            } catch (Exception ignored) {}
+        }
+        // Also subtract any recentPayment we show as pre-posted
+        payments += recentPayment;
+
+        // Compute remaining balance (can't go below zero here, overpayment tracked separately)
+        double remaining = base - payments;
+        if (remaining < 0) {
+            overpaymentCredit += -remaining;
+            remaining = 0;
+        }
+        remainingBalance = remaining;
     }
 
     /**
@@ -3093,12 +3136,12 @@ public class ISLUStudentPortal extends JFrame {
     private void refreshStatementOfAccounts() {
         // Update the amount due value label if it exists
         if (amountDueValueLabel != null) {
-            amountDueValueLabel.setText("P " + String.format("%.2f", amountDue));
+            amountDueValueLabel.setText(String.format("P %,.2f", amountDue));
         }
         
-        // Update the overpayment value label if it exists
-        if (overpaymentValueLabel != null) {
-            overpaymentValueLabel.setText("P (" + String.format("%.2f", currentBalance) + ")");
+        // Update the remaining balance value label if it exists
+        if (remainingBalanceValueLabel != null) {
+            remainingBalanceValueLabel.setText(String.format("P %,.2f", Math.max(remainingBalance, 0.0)));
         }
         
         // Update the PRELIM STATUS label if it exists
@@ -3114,11 +3157,10 @@ public class ISLUStudentPortal extends JFrame {
             prelimStatusLabel.setForeground(prelimStatusColor);
         }
         
-        // Show success message with both balances
-        String message = "Statement of Accounts has been updated.\n" +
-            "Amount Due: P " + String.format("%.2f", amountDue) + "\n" +
-            "Overpayment Balance: P " + String.format("%.2f", currentBalance);
-        
+        // Optional toast
+        String message = "Updated. Amount Due: " + String.format("P %,.2f", amountDue) +
+                ", Remaining Balance: " + String.format("P %,.2f", Math.max(remainingBalance, 0.0)) +
+                (overpaymentCredit > 0 ? ", Overpayment Credit: " + String.format("P %,.2f", overpaymentCredit) : "");
         JOptionPane.showMessageDialog(this, message, "Balance Updated", JOptionPane.INFORMATION_MESSAGE);
     }
 
