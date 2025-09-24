@@ -4,3 +4,11 @@ ProfileData Format: Gender=value;Citizenship=value;Religion=value;CivilStatus=va
 
 2250493,Atsumi,Sae,Cristobal,10/24/2005,saeatsumi|Gender=Female;Citizenship=Japanese;Religion=Roman Catholic;CivilStatus=Single;Birthplace=Urdaneta;Nationality=Japanese;HomeAddress=Urdaneta;HomeTel=987;BaguioAddress=Bonifacio;BaguioTel=654;Cellphone=321;FatherName=hideo;FatherOcc=laborer;MotherName=cristina;MotherOcc=housewife;GuardianName=lisa;GuardianAddress=urdaneta;
 2251834,Madriaga,Aldine,Guleng,10/24/2005,aldine|Gender=Female;Citizenship=Filipino;Religion=Roman Catholic;CivilStatus=Single;Birthplace=LUMC;Nationality=Filipino;HomeAddress=Agoo, La Union;HomeTel=3216548698;BaguioAddress=Bonifacio;BaguioTel=987654321;Cellphone=09204998480;FatherName=Albert;FatherOcc=Secret;MotherName=Salva;MotherOcc=Secret;GuardianName=Aldrin;GuardianAddress=Brookside;
+2251001,Santos,Juan,Reyes,01/15/2005,pass1001|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;
+2251002,Cruz,Maria,Lopez,02/20/2005,pass1002|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;
+2251003,Garcia,Pedro,Lim,03/10/2005,pass1003|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;
+2251004,Reyes,Ana,Lee,04/05/2005,pass1004|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;
+2251005,Mendoza,Jose,Chan,05/12/2005,pass1005|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;
+2251006,Torres,Luis,Go,06/18/2005,pass1006|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;
+2251007,Aquino,Lara,Tan,07/22/2005,pass1007|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;
+2251008,Villanueva,Carl,Uy,08/30/2005,pass1008|Program=BSIT;Citizenship=Filipino;CivilStatus=Single;

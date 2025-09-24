@@ -720,8 +720,8 @@ public class ISLUStudentPortal extends JFrame {
         minStart = roundDownToHalfHour(minStart);
         maxEnd = roundUpToHalfHour(maxEnd);
 
-        // Column names from subItems
-        String[] columnNames = {"","Time", "Monday","Tuesday","Wednesday","Thursday","Friday"};
+        // Column names aligned with data indices
+        String[] columnNames = {"Time", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 
         // Build data rows
         List<Object[]> rows = new ArrayList<>();
@@ -761,7 +761,8 @@ public class ISLUStudentPortal extends JFrame {
 
     private String courseLabelAtTime(List<CourseScheduleItem> courses, LocalTime slot, String day) {
         for (CourseScheduleItem c : courses) {
-            if (c.occursOn(day) && !slot.isBefore(c.startTime) && slot.isBefore(c.endTime)) {
+            // Show the course label only at the starting time slot to avoid duplicate labels across consecutive slots
+            if (c.occursOn(day) && slot.equals(c.startTime)) {
                 return c.courseNumber + " (" + c.room + ")";
             }
         }
