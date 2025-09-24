@@ -4,3 +4,11 @@ ProfileData Format: Gender=value;Citizenship=value;Religion=value;CivilStatus=va
 
 2250493,Atsumi,Sae,Cristobal,10/24/2005,saeatsumi|Gender=Female;Citizenship=Japanese;Religion=Roman Catholic;CivilStatus=Single;Birthplace=Urdaneta;Nationality=Japanese;HomeAddress=Urdaneta;HomeTel=987;BaguioAddress=Bonifacio;BaguioTel=654;Cellphone=321;FatherName=hideo;FatherOcc=laborer;MotherName=cristina;MotherOcc=housewife;GuardianName=lisa;GuardianAddress=urdaneta;
 2251834,Madriaga,Aldine,Guleng,10/24/2005,aldine|Gender=Female;Citizenship=Filipino;Religion=Roman Catholic;CivilStatus=Single;Birthplace=LUMC;Nationality=Filipino;HomeAddress=Agoo, La Union;HomeTel=3216548698;BaguioAddress=Bonifacio;BaguioTel=987654321;Cellphone=09204998480;FatherName=Albert;FatherOcc=Secret;MotherName=Salva;MotherOcc=Secret;GuardianName=Aldrin;GuardianAddress=Brookside;
+2252001,Dela Cruz,Student1,A,01/01/2005,bsit123
+2252002,Gonzales,Student2,B,02/02/2005,bsit123
+2252003,Santos,Student3,C,03/03/2005,bsit123
+2252004,Reyes,Student4,D,04/04/2005,bsit123
+2252005,Cruz,Student5,E,05/05/2005,bsit123
+2252006,Ramos,Student6,F,06/06/2005,bsit123
+2252007,Mendoza,Student7,G,07/07/2005,bsit123
+2252008,Torres,Student8,H,08/08/2005,bsit123
