@@ -470,6 +470,11 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Grades page
+app.get('/grades', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'grades.html'));
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

@@ -1,0 +1,126 @@
+/* Layout */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #e9edf3;
+    color: #333;
+}
+
+.portal {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 220px;
+    background: #0e2a4d;
+    color: #c9d6e8;
+    padding: 16px 12px;
+}
+
+.brand {
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.brand .muted { color: #9fb6d1; }
+
+.term {
+    font-size: 12px;
+    color: #9fb6d1;
+    margin-bottom: 16px;
+}
+
+.nav { display: flex; flex-direction: column; gap: 6px; }
+.nav-item {
+    color: #c9d6e8;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 4px;
+}
+.nav-item:hover { background: rgba(255,255,255,0.08); }
+.nav-item.active { background: #143864; color: #fff; }
+
+/* Main content */
+.content { flex: 1; padding: 16px 20px; }
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0e2a4d;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.crumb { font-weight: 600; }
+.user { display: flex; align-items: center; gap: 10px; }
+.logout { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 6px 10px; border-radius: 3px; cursor: pointer; }
+
+/* Grades card/table */
+.grades-card {
+    background: #fff;
+    margin-top: 14px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.grades-table { width: 100%; border-collapse: collapse; }
+.grades-table thead th {
+    background: #e9edf3;
+    text-align: left;
+    font-size: 12px;
+    color: #495057;
+    padding: 10px 12px;
+    border-bottom: 2px solid #d7dde6;
+}
+.grades-table tbody td {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid #eef2f7;
+}
+.grades-table tbody tr:nth-child(even) { background: #f9fbfd; }
+.w-60 { width: 60px; }
+.w-100 { width: 100px; }
+.w-140 { width: 140px; }
+.w-180 { width: 180px; }
+
+.placeholder {
+    color: #718096;
+    font-style: italic;
+}
+
+.note {
+    padding: 12px;
+    font-size: 12px;
+    color: #555;
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    gap: 30px;
+    margin-top: 16px;
+    color: #333;
+}
+.legend-col { font-size: 13px; }
+.legend-title { font-weight: bold; margin-bottom: 8px; }
+.legend-sub { margin-top: 10px; font-weight: bold; }
+
+/* Footer */
+.footer {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #6b7280;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .sidebar { display: none; }
+}
