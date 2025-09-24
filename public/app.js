@@ -611,6 +611,11 @@ function showSuccess(message) {
     }, 5000);
 }
 
+// Navigate to full grades page
+function viewFullGrades() {
+    window.location.href = 'grades.html';
+}
+
 // Export functions for global access
 window.openPaymentModal = openPaymentModal;
 window.closePaymentModal = closePaymentModal;
@@ -618,5 +623,6 @@ window.closeGradesModal = closeGradesModal;
 window.showReminderModal = showReminderModal;
 window.closeReminderModal = closeReminderModal;
 window.viewGrades = viewGrades;
+window.viewFullGrades = viewFullGrades;
 window.logout = logout;
 window.processPayment = processPayment;
