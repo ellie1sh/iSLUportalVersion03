@@ -270,11 +270,11 @@ public class Login extends JFrame {
      * @return true if credentials match, false otherwise
      */
     private boolean authenticateUser(String enteredID, String enteredPassword) {
-        // Check database availability first for clearer error messaging
-        if (!DataManager.databaseExists()) {
+        // Check that at least one credential store exists for clearer error messaging
+        if (!DataManager.credentialsStoreExists()) {
             JOptionPane.showMessageDialog(this,
-                "Database not found. Please contact administrator.",
-                "Database Error",
+                "No credentials store found (Database.txt/UserPasswordID.txt). Please create an account first or contact the administrator.",
+                "Credentials Store Missing",
                 JOptionPane.ERROR_MESSAGE);
             return false;
         }
