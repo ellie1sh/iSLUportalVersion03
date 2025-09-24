@@ -759,18 +759,25 @@ public class ISLUStudentPortal extends JFrame {
         scheduleTable.getColumnModel().getColumn(7).setPreferredWidth(120); // Module
 
         JScrollPane scrollPane = new JScrollPane(scheduleTable);
-        schedulePanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Create a panel to hold both the table and the block text
+        JPanel tablePanel = new JPanel(new BorderLayout());
+        tablePanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Block text positioned just below the table - bolded and emphasized
+        JLabel blockLabel = new JLabel("BLOCK: BSIT 2-3");
+        blockLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        blockLabel.setBorder(BorderFactory.createEmptyBorder(8, 10, 5, 10));
+        blockLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        tablePanel.add(blockLabel, BorderLayout.SOUTH);
+        
+        schedulePanel.add(tablePanel, BorderLayout.CENTER);
 
-        // Footer with total units and block information
-        JPanel footerPanel = new JPanel(new BorderLayout());
-        footerPanel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        // Footer with total units only
         JLabel totalUnitsLabel = new JLabel("Total Units: " + totalUnits);
         totalUnitsLabel.setFont(new Font("Arial", Font.BOLD, 12));
-        JLabel blockLabel = new JLabel("BLOCK: BSIT 2-3");
-        blockLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        footerPanel.add(totalUnitsLabel, BorderLayout.WEST);
-        footerPanel.add(blockLabel, BorderLayout.EAST);
-        schedulePanel.add(footerPanel, BorderLayout.SOUTH);
+        totalUnitsLabel.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        schedulePanel.add(totalUnitsLabel, BorderLayout.SOUTH);
 
         return schedulePanel;
     }
