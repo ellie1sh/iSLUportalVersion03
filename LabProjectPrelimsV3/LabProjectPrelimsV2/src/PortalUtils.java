@@ -124,7 +124,7 @@ public class PortalUtils {
         return homeSubList;
     }
     
-    private static MySinglyLinkedList<String> createAttendanceSubList() {
+    public static MySinglyLinkedList<String> createAttendanceSubList() {
         MySinglyLinkedList<String> attendanceSubList = new MySinglyLinkedList<>();
         attendanceSubList.add("Attendance Record");
         return attendanceSubList;
@@ -136,7 +136,7 @@ public class PortalUtils {
         return scheduleSubList;
     }
 
-    private static MySinglyLinkedList<String> createGradeSubList() {
+    public static MySinglyLinkedList<String> createGradeSubList() {
         MySinglyLinkedList<String> gradesSublist = new MySinglyLinkedList<>();
         gradesSublist.add("Grades");
         return gradesSublist;

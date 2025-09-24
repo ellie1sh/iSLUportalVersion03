@@ -13,6 +13,9 @@ public class DataManager {
     private static final String DATABASE_FILE = "Database.txt";
     private static final String USER_PASSWORD_FILE = "UserPasswordID.txt";
     private static final String PAYMENT_LOGS_FILE = "paymentLogs.txt";
+    private static final String ATTENDANCE_RECORDS_FILE = "attendanceRecords.txt";
+    private static final String COURSE_SCHEDULES_FILE = "courseSchedules.txt";
+    private static final String GRADE_RECORDS_FILE = "gradeRecords.txt";
     
     /**
      * Resolve a data file by searching from the working directory and then walking up
@@ -49,6 +52,9 @@ public class DataManager {
     private static File getDatabaseFile() { return resolveFile(DATABASE_FILE); }
     private static File getUserPasswordFile() { return resolveFile(USER_PASSWORD_FILE); }
     private static File getPaymentLogsFile() { return resolveFile(PAYMENT_LOGS_FILE); }
+    private static File getAttendanceRecordsFile() { return resolveFile(ATTENDANCE_RECORDS_FILE); }
+    private static File getCourseSchedulesFile() { return resolveFile(COURSE_SCHEDULES_FILE); }
+    private static File getGradeRecordsFile() { return resolveFile(GRADE_RECORDS_FILE); }
 
     public static boolean databaseExists() {
         return getDatabaseFile().exists();
@@ -70,8 +76,8 @@ public class DataManager {
             try (BufferedReader reader = new BufferedReader(new FileReader(databaseFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    // Skip empty lines
-                    if (line.trim().isEmpty()) {
+                    // Skip empty lines and header lines
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
                         continue;
                     }
                     
@@ -112,8 +118,8 @@ public class DataManager {
             try (BufferedReader reader = new BufferedReader(new FileReader(databaseFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    // Skip empty lines
-                    if (line.trim().isEmpty()) {
+                    // Skip empty lines and header lines
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
                         continue;
                     }
                     
@@ -252,6 +258,10 @@ public class DataManager {
                 try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
+                        // Skip empty lines and header lines
+                        if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                            continue;
+                        }
                         String[] parts = line.split(",");
                         if (parts.length >= 5) {
                             String transactionStudentID = parts[4].trim();
@@ -290,8 +300,8 @@ public class DataManager {
             try (BufferedReader reader = new BufferedReader(new FileReader(databaseFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    // Skip empty lines
-                    if (line.trim().isEmpty()) {
+                    // Skip empty lines and header lines
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
                         continue;
                     }
                     
@@ -465,6 +475,217 @@ public class DataManager {
             System.err.println("Error updating password: " + e.getMessage());
             return false;
         }
+    }
+    
+    /**
+     * Loads attendance records for a specific student
+     * @param studentID The student ID to load attendance for
+     * @return List of attendance records
+     */
+    public static List<AttendanceRecord> loadAttendanceRecords(String studentID) {
+        List<AttendanceRecord> records = new ArrayList<>();
+        
+        try {
+            File attendanceFile = getAttendanceRecordsFile();
+            if (attendanceFile.exists()) {
+                try (BufferedReader reader = new BufferedReader(new FileReader(attendanceFile))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        // Skip empty lines and header lines
+                        if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                            continue;
+                        }
+                        
+                        AttendanceRecord record = AttendanceRecord.fromCsvFormat(line);
+                        if (record != null && studentID.equals(record.getStudentID())) {
+                            records.add(record);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error reading attendance records: " + e.getMessage());
+        }
+        
+        return records;
+    }
+    
+    /**
+     * Calculates attendance summary for a student
+     * @param studentID The student ID
+     * @return Map with subject as key and attendance summary as value
+     */
+    public static Map<String, AttendanceSummary> getAttendanceSummary(String studentID) {
+        List<AttendanceRecord> records = loadAttendanceRecords(studentID);
+        Map<String, AttendanceSummary> summaryMap = new HashMap<>();
+        
+        for (AttendanceRecord record : records) {
+            String subject = record.getSubjectName();
+            AttendanceSummary summary = summaryMap.getOrDefault(subject, new AttendanceSummary(subject));
+            
+            switch (record.getStatus()) {
+                case "Present":
+                    summary.incrementPresent();
+                    break;
+                case "Absent":
+                    summary.incrementAbsent();
+                    break;
+                case "Late":
+                    summary.incrementLate();
+                    break;
+            }
+            
+            summaryMap.put(subject, summary);
+        }
+        
+        return summaryMap;
+    }
+    
+    /**
+     * Faculty function to update attendance (placeholder for future faculty integration)
+     * @param studentID The student ID
+     * @param subjectCode The subject code
+     * @param subjectName The subject name
+     * @param date The date
+     * @param status The attendance status
+     * @param remarks Optional remarks
+     * @return true if successful, false otherwise
+     */
+    public static boolean updateAttendanceRecord(String studentID, String subjectCode, 
+            String subjectName, java.time.LocalDate date, String status, String remarks) {
+        // TODO: This function will be implemented when faculty account system is integrated
+        // For now, it's a placeholder that returns false to indicate it's not yet functional
+        System.out.println("Faculty attendance update function called - not yet implemented");
+        System.out.println("Parameters: " + studentID + ", " + subjectCode + ", " + 
+                          subjectName + ", " + date + ", " + status + ", " + remarks);
+        return false;
+    }
+    
+    /**
+     * Loads course schedules for a specific student
+     * @param studentID The student ID to load schedules for
+     * @return List of course schedules
+     */
+    public static List<CourseSchedule> loadCourseSchedules(String studentID) {
+        List<CourseSchedule> schedules = new ArrayList<>();
+        
+        try {
+            File scheduleFile = getCourseSchedulesFile();
+            if (scheduleFile.exists()) {
+                try (BufferedReader reader = new BufferedReader(new FileReader(scheduleFile))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        // Skip empty lines and header lines
+                        if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                            continue;
+                        }
+                        
+                        CourseSchedule schedule = CourseSchedule.fromCsvFormat(line);
+                        if (schedule != null && studentID.equals(schedule.getStudentID())) {
+                            schedules.add(schedule);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error reading course schedules: " + e.getMessage());
+        }
+        
+        return schedules;
+    }
+    
+    /**
+     * Gets the current semester for a student
+     * @param studentID The student ID
+     * @return Current semester string
+     */
+    public static String getCurrentSemester(String studentID) {
+        List<CourseSchedule> schedules = loadCourseSchedules(studentID);
+        if (!schedules.isEmpty()) {
+            return schedules.get(0).getSemester();
+        }
+        return "FIRST SEMESTER 2025-2026"; // Default
+    }
+    
+    /**
+     * Loads grade records for a specific student
+     * @param studentID The student ID to load grades for
+     * @return List of grade records
+     */
+    public static List<GradeRecord> loadGradeRecords(String studentID) {
+        List<GradeRecord> records = new ArrayList<>();
+        
+        try {
+            File gradeFile = getGradeRecordsFile();
+            if (gradeFile.exists()) {
+                try (BufferedReader reader = new BufferedReader(new FileReader(gradeFile))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        // Skip empty lines and header lines
+                        if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                            continue;
+                        }
+                        
+                        GradeRecord record = GradeRecord.fromCsvFormat(line);
+                        if (record != null && studentID.equals(record.getStudentID())) {
+                            records.add(record);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error reading grade records: " + e.getMessage());
+        }
+        
+        return records;
+    }
+    
+    /**
+     * Gets current semester grade records for a student
+     * @param studentID The student ID
+     * @return List of current semester grade records
+     */
+    public static List<GradeRecord> getCurrentSemesterGrades(String studentID) {
+        List<GradeRecord> allGrades = loadGradeRecords(studentID);
+        String currentSemester = getCurrentSemester(studentID);
+        
+        return allGrades.stream()
+                .filter(grade -> currentSemester.equals(grade.getSemester()))
+                .collect(java.util.stream.Collectors.toList());
+    }
+    
+    /**
+     * Updates a grade record (placeholder for faculty integration)
+     * @param studentID The student ID
+     * @param subjectCode The subject code
+     * @param gradeType The type of grade (prelim, midterm, tentative_final, final)
+     * @param grade The grade value
+     * @return true if successful, false otherwise
+     */
+    public static boolean updateGrade(String studentID, String subjectCode, String gradeType, Double grade) {
+        // TODO: This function will be implemented when faculty account system is integrated
+        System.out.println("Faculty grade update function called - not yet implemented");
+        System.out.println("Parameters: " + studentID + ", " + subjectCode + ", " + gradeType + ", " + grade);
+        return false;
+    }
+    
+    /**
+     * Gets completed grade records for transcript
+     * @param studentID The student ID
+     * @return List of completed grade records grouped by semester
+     */
+    public static Map<String, List<GradeRecord>> getTranscriptRecords(String studentID) {
+        List<GradeRecord> allGrades = loadGradeRecords(studentID);
+        Map<String, List<GradeRecord>> transcriptMap = new LinkedHashMap<>();
+        
+        // Filter only completed courses and group by semester
+        for (GradeRecord grade : allGrades) {
+            if ("Completed".equals(grade.getStatus()) && grade.getFinalGrade() != null) {
+                transcriptMap.computeIfAbsent(grade.getSemester(), k -> new ArrayList<>()).add(grade);
+            }
+        }
+        
+        return transcriptMap;
     }
 }
 
