@@ -1032,11 +1032,12 @@ public class ISLUStudentPortal extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.setBackground(Color.WHITE);
         
-        // Load attendance records
+        // Load attendance records (marked by faculty in real-time)
+        // NOTE: Faculty portal will update attendance records in real-time during class
         java.util.List<AttendanceRecord> records = DataManager.loadAttendanceRecords(studentID);
         java.util.List<AttendanceRecord> absentTardyRecords = new java.util.ArrayList<>();
         
-        // Filter for absent and tardy records only
+        // Filter for absent and tardy records only (as marked by faculty)
         for (AttendanceRecord record : records) {
             if ("Absent".equals(record.getStatus()) || "Late".equals(record.getStatus())) {
                 absentTardyRecords.add(record);
@@ -1421,9 +1422,14 @@ public class ISLUStudentPortal extends JFrame {
                 // Show "Oops!" dialog
                 showOopsDialog();
             } else {
-                // Update the attendance record with the reason
-                record.setRemarks(reason);
-                // TODO: Save to file/database
+                // Submit the reason through DataManager
+                boolean success = DataManager.submitAttendanceReason(
+                    studentID, record.getSubjectCode(), record.getDate(), reason);
+                
+                if (success) {
+                    // Update local record for immediate UI update
+                    record.setRemarks(reason);
+                }
                 
                 // Show success message and close dialog
                 JOptionPane.showMessageDialog(dialog, 
