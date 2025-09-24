@@ -2,8 +2,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Utility class that demonstrates integration of all classes in the Student Portal system
- * This class shows how MyDoublyLinkedList, MenuItem, DataManager, and other classes work together
+ * Utility class for the ISLU Student Portal system
+ * Provides helper methods for creating menu systems and managing portal data
+ * All methods work with pure Java implementations - no HTML/CSS dependencies
  */
 public class PortalUtils {
     
@@ -28,17 +29,17 @@ public class PortalUtils {
         MySinglyLinkedList<String> downloadableSubList = createDownloadableSubList();
 
         
-        // Add menu items to the doubly linked list
+        // Add menu items to the doubly linked list in proper order
         menu.add(new MenuItem("🏠 Home", homeSubList));
-        menu.add(new MenuItem("📌 Attendance", attendanceSubList));
         menu.add(new MenuItem("📅 Schedule", scheduleSubList));
+        menu.add(new MenuItem("📌 Attendance", attendanceSubList));
         menu.add(new MenuItem("🧮 Statement of Accounts", soaSubList));
         menu.add(new MenuItem("📊 Grades", gradesSubList));
         menu.add(new MenuItem("📋 Transcript of Records", torSubList));
         menu.add(new MenuItem("✅ Curriculum Checklist", curriculumChecklistSubList));
         menu.add(new MenuItem("🏥 Medical Record", medicalSubList));
-        menu.add(new MenuItem("📚 Journal/Periodical", journalSubList));
         menu.add(new MenuItem("👤 Personal Details", personalDetailsSubList));
+        menu.add(new MenuItem("📚 Journal/Periodical", journalSubList));
         menu.add(new MenuItem("ℹ️ Downloadable/ About iSLU", downloadableSubList));
         
         return menu;
@@ -111,82 +112,161 @@ public class PortalUtils {
     public static PortalSession createPortalSession(String studentID) {
         StudentInfo studentInfo = DataManager.getStudentInfo(studentID);
         MyDoublyLinkedList<MenuItem> menu = createIntegratedMenuSystem();
-        List<PaymentTransaction> transactions = DataManager.loadPaymentTransactions(studentID);
+        List<PaymentTransaction> transactions = DataManager.getPaymentTransactions(studentID);
         
         return new PortalSession(studentInfo, menu, transactions);
     }
     
-    // Helper methods for creating sub-lists
-    static MySinglyLinkedList<String> createHomeSublist() {
+    // =================================================================
+    // HELPER METHODS FOR CREATING MENU SUB-LISTS
+    // These methods create sub-items for each main menu category
+    // =================================================================
+    
+    /**
+     * Creates sub-list for Home menu
+     */
+    public static MySinglyLinkedList<String> createHomeSublist() {
         MySinglyLinkedList<String> homeSubList = new MySinglyLinkedList<>();
         homeSubList.add("📰 Events, News & Announcements");
         homeSubList.add("📌 Student Status");
         return homeSubList;
     }
     
+    /**
+     * Creates sub-list for Schedule menu
+     */
+    public static MySinglyLinkedList<String> createScheduleSubList() {
+        MySinglyLinkedList<String> scheduleSubList = new MySinglyLinkedList<>();
+        scheduleSubList.add("📅 Class Schedule");
+        scheduleSubList.add("🕒 Time Table View");
+        return scheduleSubList;
+    }
+    
+    /**
+     * Creates sub-list for Attendance menu
+     */
     public static MySinglyLinkedList<String> createAttendanceSubList() {
         MySinglyLinkedList<String> attendanceSubList = new MySinglyLinkedList<>();
-        attendanceSubList.add("Attendance Record");
+        attendanceSubList.add("📊 Attendance Summary");
+        attendanceSubList.add("📋 Detailed Records");
         return attendanceSubList;
     }
     
-    private static MySinglyLinkedList<String> createScheduleSubList() {
-        MySinglyLinkedList<String> scheduleSubList = new MySinglyLinkedList<>();
-        scheduleSubList.add("Class Schedule");
-        return scheduleSubList;
+    /**
+     * Creates sub-list for Statement of Accounts menu
+     */
+    public static MySinglyLinkedList<String> createSOASubList() {
+        MySinglyLinkedList<String> soaSubList = new MySinglyLinkedList<>();
+        soaSubList.add("💰 Account Balance");
+        soaSubList.add("💳 Payment History");
+        soaSubList.add("🏦 Payment Channels");
+        return soaSubList;
     }
 
+    /**
+     * Creates sub-list for Grades menu
+     */
     public static MySinglyLinkedList<String> createGradeSubList() {
         MySinglyLinkedList<String> gradesSublist = new MySinglyLinkedList<>();
-        gradesSublist.add("Grades");
+        gradesSublist.add("📊 Current Grades");
+        gradesSublist.add("📈 Grade Progress");
         return gradesSublist;
     }
     
-    private static MySinglyLinkedList<String> createSOASubList() {
-        MySinglyLinkedList<String> sOASubList = new MySinglyLinkedList<>();
-        sOASubList.add("Statement of Accounts (SHORT TERM, 2025)");
-        sOASubList.add("Online Payment Channels");
-        return sOASubList;
+    /**
+     * Creates sub-list for Transcript of Records menu
+     */
+    public static MySinglyLinkedList<String> createTORSubList() {
+        MySinglyLinkedList<String> torSubList = new MySinglyLinkedList<>();
+        torSubList.add("📋 Academic Transcript");
+        torSubList.add("📄 Download PDF");
+        return torSubList;
     }
     
-    private static MySinglyLinkedList<String> createTORSubList() {
-        MySinglyLinkedList<String> TORSubList = new MySinglyLinkedList<>();
-        TORSubList.add("📋 Transcript of Records");
-        return TORSubList;
-    }
-    
-    private static MySinglyLinkedList<String> createPersonalDetailsSubList() {
-        MySinglyLinkedList<String> personalDetailsSubList = new MySinglyLinkedList<>();
-        personalDetailsSubList.add("User Profile");
-        return personalDetailsSubList;
-    }
-
-    private static MySinglyLinkedList<String> createCurriculumChecklistSubList(){
-        MySinglyLinkedList<String> CurriculumChecklistSubList = new MySinglyLinkedList<>();
-        CurriculumChecklistSubList.add("✅ BACHELOR OF SCIENCE IN INFORMATION TECHNOLOGY FIRST SEMESTER, 2018-2019");
-        return CurriculumChecklistSubList;
+    /**
+     * Creates sub-list for Curriculum Checklist menu
+     */
+    public static MySinglyLinkedList<String> createCurriculumChecklistSubList() {
+        MySinglyLinkedList<String> curriculumSubList = new MySinglyLinkedList<>();
+        curriculumSubList.add("✅ Course Requirements");
+        curriculumSubList.add("📚 Completed Courses");
+        curriculumSubList.add("📝 Remaining Requirements");
+        return curriculumSubList;
     }
 
-    private static MySinglyLinkedList<String> createMedicalSubList(){
+    /**
+     * Creates sub-list for Medical Record menu
+     */
+    public static MySinglyLinkedList<String> createMedicalSubList() {
         MySinglyLinkedList<String> medicalSubList = new MySinglyLinkedList<>();
+        medicalSubList.add("🏥 Medical Examination");
+        medicalSubList.add("💉 Health Clearance");
+        medicalSubList.add("📋 Medical Certificates");
         return medicalSubList;
     }
 
+    /**
+     * Creates sub-list for Personal Details menu
+     */
+    public static MySinglyLinkedList<String> createPersonalDetailsSubList() {
+        MySinglyLinkedList<String> personalSubList = new MySinglyLinkedList<>();
+        personalSubList.add("👤 Profile Information");
+        personalSubList.add("📞 Contact Details");
+        personalSubList.add("🏠 Address Information");
+        return personalSubList;
+    }
 
-
-    private static MySinglyLinkedList<String> createJournalSubList(){
+    /**
+     * Creates sub-list for Journal/Periodical menu
+     */
+    public static MySinglyLinkedList<String> createJournalSubList() {
         MySinglyLinkedList<String> journalSubList = new MySinglyLinkedList<>();
-        journalSubList.add("WHAT ARE JOURNAL INDEXES?");
-        journalSubList.add("THE SLU LIBRARIES' PERIODICAL ARTICLE INDEXES");
-        journalSubList.add("STEPS IN ACCESSING THE PERIODICAL ARTICLE INDEXES");
+        journalSubList.add("📚 Academic Journals");
+        journalSubList.add("📖 Research Papers");
+        journalSubList.add("🔍 Library Resources");
         return journalSubList;
     }
 
-    private static MySinglyLinkedList<String> createDownloadableSubList(){
+    /**
+     * Creates sub-list for Downloadables/About iSLU menu
+     */
+    public static MySinglyLinkedList<String> createDownloadableSubList() {
         MySinglyLinkedList<String> downloadableSubList = new MySinglyLinkedList<>();
-        downloadableSubList.add("Downloadables");
-        downloadableSubList.add("About iSLU");
+        downloadableSubList.add("📥 Forms & Documents");
+        downloadableSubList.add("ℹ️ About iSLU");
+        downloadableSubList.add("📜 University History");
         return downloadableSubList;
+    }
+    
+    // =================================================================
+    // UTILITY METHODS FOR PORTAL OPERATIONS
+    // =================================================================
+    
+    /**
+     * Gets the display name for a menu item (removes emoji for cleaner display)
+     */
+    public static String getCleanMenuName(String menuName) {
+        return menuName.replaceAll("[^\\w\\s/]", "").trim();
+    }
+    
+    /**
+     * Validates if a menu item exists in the system
+     */
+    public static boolean isValidMenuItem(String menuName) {
+        MyDoublyLinkedList<MenuItem> menu = createIntegratedMenuSystem();
+        for (MenuItem item : menu) {
+            if (item.getName().equals(menuName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Gets the total number of menu items
+     */
+    public static int getTotalMenuItems() {
+        return createIntegratedMenuSystem().getSize();
     }
 }
 
