@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grades - Student Portal</title>
+    <link rel="stylesheet" href="grades.css">
+</head>
+<body>
+    <div class="portal">
+        <aside class="sidebar">
+            <div class="brand">STUDENT<span class="muted">portal</span></div>
+            <div class="term">FIRST SEMESTER, 2025-2026</div>
+            <nav class="nav">
+                <a href="/" class="nav-item">Home</a>
+                <a class="nav-item">Schedule</a>
+                <a class="nav-item">Attendance</a>
+                <a class="nav-item">Statement of Accounts</a>
+                <a class="nav-item active">Grades</a>
+                <a class="nav-item">Transcript of Records</a>
+                <a class="nav-item">Curriculum Checklist</a>
+                <a class="nav-item">Medical Record</a>
+                <a class="nav-item">Personal Details</a>
+                <a class="nav-item">Journal/Periodical</a>
+                <a class="nav-item">Downloadables / About SLU</a>
+            </nav>
+        </aside>
+        <main class="content">
+            <header class="content-header">
+                <div class="crumb">Grades (FIRST SEMESTER, 2025-2026)</div>
+                <div class="user">
+                    <div class="user-name" id="userName">Loading...</div>
+                    <button class="logout" id="logoutBtn">Logout</button>
+                </div>
+            </header>
+
+            <section class="grades-card">
+                <table class="grades-table" id="gradesTable">
+                    <thead>
+                        <tr>
+                            <th class="w-180">Class Code</th>
+                            <th>Course Number</th>
+                            <th class="w-60">Units</th>
+                            <th class="w-100">Prelim Grade</th>
+                            <th class="w-100">Midterm Grade</th>
+                            <th class="w-140">Tentative Final Grade</th>
+                            <th class="w-100">Final Grade</th>
+                            <th class="w-100">Weights</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradesBody">
+                        <!-- Rows populated by JS. Placeholder if none. -->
+                    </tbody>
+                </table>
+                <div class="note">
+                    NOTE: Deadline of submission for completion of Students is <strong>February 04, 2026</strong>. NC due to NFE/INC if not completed, the final grades shall become permanent.
+                </div>
+            </section>
+
+            <section class="legend">
+                <div class="legend-col">
+                    <div class="legend-title">LEGEND:</div>
+                    <div>P .......... Passed</div>
+                    <div>INC ........ Incomplete</div>
+                    <div>D .......... Dropped</div>
+                    <div>NC ........ No Credit</div>
+                    <div class="legend-sub">FOR UNDERGRADUATE</div>
+                    <div>Passing Grade ............ 75%</div>
+                    <div>Failure .................. Below 75%</div>
+                </div>
+                <div class="legend-col">
+                    <div>HP .......... High Pass</div>
+                    <div>WP .......... Withdrawal w/ Permission</div>
+                    <div>F ........... Failure</div>
+                    <div>NFE ........ No Final Examination</div>
+                    <div class="legend-sub">FOR GRADUATE SCHOOL</div>
+                    <div>Passing Grade ............ 85%</div>
+                    <div>Failure .................. Below 85%</div>
+                </div>
+            </section>
+
+            <footer class="footer">Copyright © 2025 <strong>Saint Louis University Inc.</strong> All rights reserved.</footer>
+        </main>
+    </div>
+
+    <script src="grades.js"></script>
+    <script>
+        // Simple link guard for demo
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+        });
+    </script>
+</body>
+<!-- Backend integration for faculty grade input will be added later. -->
+</html>
