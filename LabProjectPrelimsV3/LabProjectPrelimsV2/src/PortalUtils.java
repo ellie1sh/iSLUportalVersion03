@@ -28,17 +28,17 @@ public class PortalUtils {
         MySinglyLinkedList<String> downloadableSubList = createDownloadableSubList();
 
         
-        // Add menu items to the doubly linked list
+        // Add menu items to the doubly linked list (ordered as requested)
         menu.add(new MenuItem("🏠 Home", homeSubList));
-        menu.add(new MenuItem("📌 Attendance", attendanceSubList));
         menu.add(new MenuItem("📅 Schedule", scheduleSubList));
+        menu.add(new MenuItem("📌 Attendance", attendanceSubList));
         menu.add(new MenuItem("🧮 Statement of Accounts", soaSubList));
         menu.add(new MenuItem("📊 Grades", gradesSubList));
         menu.add(new MenuItem("📋 Transcript of Records", torSubList));
         menu.add(new MenuItem("✅ Curriculum Checklist", curriculumChecklistSubList));
         menu.add(new MenuItem("🏥 Medical Record", medicalSubList));
-        menu.add(new MenuItem("📚 Journal/Periodical", journalSubList));
         menu.add(new MenuItem("👤 Personal Details", personalDetailsSubList));
+        menu.add(new MenuItem("📚 Journal/Periodical", journalSubList));
         menu.add(new MenuItem("ℹ️ Downloadable/ About iSLU", downloadableSubList));
         
         return menu;
