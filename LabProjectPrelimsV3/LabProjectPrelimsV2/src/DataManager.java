@@ -542,6 +542,86 @@ public class DataManager {
     }
     
     /**
+     * Applies a single reason text to multiple attendance entries (Absent or Late)
+     * for a given student and subject on the provided dates.
+     * The reason is written into the Remarks field in attendanceRecords.txt.
+     *
+     * @param studentID The student ID
+     * @param subjectCode The subject code to match
+     * @param dates The list of dates to update
+     * @param reason The reason text supplied by the student
+     * @return true if the file was updated successfully, false otherwise
+     */
+    public static boolean applyAttendanceReason(String studentID, String subjectCode,
+            java.util.List<java.time.LocalDate> dates, String reason) {
+        if (dates == null || dates.isEmpty()) {
+            return false;
+        }
+
+        try {
+            File attendanceFile = getAttendanceRecordsFile();
+            if (!attendanceFile.exists()) {
+                return false;
+            }
+
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy");
+            java.util.Set<String> dateStrings = new java.util.HashSet<>();
+            for (java.time.LocalDate d : dates) {
+                dateStrings.add(d.format(formatter));
+            }
+
+            java.util.List<String> lines = new java.util.ArrayList<>();
+            boolean updated = false;
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(attendanceFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                        lines.add(line);
+                        continue;
+                    }
+
+                    AttendanceRecord record = AttendanceRecord.fromCsvFormat(line);
+                    if (record != null
+                            && studentID.equals(record.getStudentID())
+                            && subjectCode.equals(record.getSubjectCode())
+                            && dateStrings.contains(record.getDate().format(formatter))
+                            && ("Absent".equals(record.getStatus()) || "Late".equals(record.getStatus()))) {
+                        // Sanitize commas to keep CSV stable
+                        String sanitizedReason = reason == null ? "" : reason.replace(",", ";").trim();
+                        AttendanceRecord updatedRecord = new AttendanceRecord(
+                                record.getStudentID(),
+                                record.getSubjectCode(),
+                                record.getSubjectName(),
+                                record.getDate(),
+                                record.getStatus(),
+                                sanitizedReason
+                        );
+                        lines.add(updatedRecord.toCsvFormat());
+                        updated = true;
+                    } else {
+                        lines.add(line);
+                    }
+                }
+            }
+
+            if (updated) {
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(attendanceFile))) {
+                    for (String l : lines) {
+                        writer.write(l);
+                        writer.newLine();
+                    }
+                }
+            }
+
+            return updated;
+        } catch (IOException e) {
+            System.err.println("Error applying attendance reason: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
      * Faculty function to update attendance (placeholder for future faculty integration)
      * @param studentID The student ID
      * @param subjectCode The subject code
