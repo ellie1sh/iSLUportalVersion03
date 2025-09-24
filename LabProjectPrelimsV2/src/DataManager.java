@@ -20,10 +20,29 @@ public class DataManager {
      * of where the application is launched from.
      */
     private static File resolveFile(String filename) {
-        // 1) Try working directory
+        // 1) Try working directory and common subfolders
         File direct = new File(filename);
         if (direct.exists()) {
             return direct.getAbsoluteFile();
+        }
+
+        List<String> commonFolders = Arrays.asList(
+            "",
+            "src",
+            "resources",
+            "resource",
+            "data",
+            "assets",
+            "LabProjectPrelimsV2",
+            "LabProjectPrelimsV2/src"
+        );
+
+        for (String folder : commonFolders) {
+            File base = folder.isEmpty() ? new File("") : new File(folder);
+            File candidate = folder.isEmpty() ? new File(filename) : new File(base, filename);
+            if (candidate.exists()) {
+                return candidate.getAbsoluteFile();
+            }
         }
 
         // 2) Try walking up from the code source (e.g., out/production/...)
@@ -33,9 +52,19 @@ public class DataManager {
             File dir = location.isFile() ? location.getParentFile() : location;
 
             for (int i = 0; i < 8 && dir != null; i++) {
-                File candidate = new File(dir, filename);
-                if (candidate.exists()) {
-                    return candidate.getAbsoluteFile();
+                // Check the directory itself
+                File directCandidate = new File(dir, filename);
+                if (directCandidate.exists()) {
+                    return directCandidate.getAbsoluteFile();
+                }
+                // Check common subfolders under this directory
+                for (String folder : commonFolders) {
+                    if (folder.isEmpty()) continue; // already checked
+                    File folderBase = new File(dir, folder);
+                    File candidate = new File(folderBase, filename);
+                    if (candidate.exists()) {
+                        return candidate.getAbsoluteFile();
+                    }
                 }
                 dir = dir.getParentFile();
             }
