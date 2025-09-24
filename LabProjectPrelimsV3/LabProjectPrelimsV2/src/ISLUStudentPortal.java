@@ -375,7 +375,7 @@ public class ISLUStudentPortal extends JFrame {
         // Add the calculated average to the end of each grades array
         // You can format the average to two decimal places
         grades1 = new Object[] {grades1[0], grades1[1], grades1[2], grades1[3], String.format("%.2f", average1)};
-        grades2 = new Object[] {grades2[0], grades1[1], grades2[2], grades2[3], String.format("%.2f", average2)};
+        grades2 = new Object[] {grades2[0], grades2[1], grades2[2], grades2[3], String.format("%.2f", average2)};
         grades3 = new Object[] {grades3[0], grades3[1], grades3[2], grades3[3], String.format("%.2f", average3)};
 
         tableModel.addRow(grades1);
@@ -397,7 +397,8 @@ public class ISLUStudentPortal extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(Color.GRAY),
-                subItem.getFirst(),
+                // Guard against missing items
+                (subItem != null && subItem.getSize() > 0) ? subItem.getFirst() : "Announcements",
                 TitledBorder.LEFT,
                 TitledBorder.TOP,
                 new Font("Arial", Font.BOLD, 14)
@@ -424,7 +425,7 @@ public class ISLUStudentPortal extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(Color.GRAY),
-                subItem.get(1),
+                (subItem != null && subItem.getSize() > 1) ? subItem.get(1) : "Student Status",
                 TitledBorder.LEFT,
                 TitledBorder.TOP,
                 new Font("Arial", Font.BOLD, 14)
@@ -579,7 +580,7 @@ public class ISLUStudentPortal extends JFrame {
         body.add(text1);
         body.add(Box.createVerticalStrut(10));
 
-        JLabel title2 = new JLabel(subItems.get(1));
+        JLabel title2 = new JLabel((subItems != null && subItems.getSize() > 1) ? subItems.get(1) : "");
         title2.setFont(new Font("Arial", Font.BOLD, 12));
         body.add(title2);
 
@@ -802,7 +803,9 @@ public class ISLUStudentPortal extends JFrame {
     // method for attendance Content
     private Component showAttendanceContent(MySinglyLinkedList<String> subItems) {
         JPanel attendancePanel = new JPanel(new BorderLayout());
-        attendancePanel.setBorder(BorderFactory.createTitledBorder(subItems.toString()));
+        attendancePanel.setBorder(BorderFactory.createTitledBorder(
+            (subItems != null) ? subItems.toString() : "Attendance Record"
+        ));
 
         String[] columnNames = {"Subject", "Present", "Absent", "Late", "Percentage"};
         Object[][] data = {
@@ -826,6 +829,13 @@ public class ISLUStudentPortal extends JFrame {
         JScrollPane scrollPane = new JScrollPane(attendanceTable);
 
         attendancePanel.add(scrollPane, BorderLayout.CENTER);
+        // Placeholder: faculty update stub (disabled until integration)
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        footer.setBackground(Color.WHITE);
+        JButton facultyUpdateBtn = new JButton("Faculty Update (coming soon)");
+        facultyUpdateBtn.setEnabled(false);
+        footer.add(facultyUpdateBtn);
+        attendancePanel.add(footer, BorderLayout.SOUTH);
         return attendancePanel;
     }
     // method for Personal Details Content
@@ -1741,7 +1751,7 @@ public class ISLUStudentPortal extends JFrame {
         headerPanel.setPreferredSize(new Dimension(0, 50));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        JLabel headerLabel = new JLabel(subItems.getFirst());
+        JLabel headerLabel = new JLabel((subItems != null && subItems.getSize() > 0) ? subItems.getFirst() : "Statement of Accounts");
         headerLabel.setForeground(Color.WHITE);
         headerLabel.setFont(new Font("Arial", Font.BOLD, 16));
         headerPanel.add(headerLabel, BorderLayout.WEST);
@@ -1810,7 +1820,7 @@ public class ISLUStudentPortal extends JFrame {
         overpaymentPanel.setLayout(new BoxLayout(overpaymentPanel, BoxLayout.Y_AXIS));
         overpaymentPanel.setBackground(Color.WHITE);
         
-        JLabel overpaymentLabel = new JLabel("Your remaining balance as of September 17, 2025 is: ");
+        JLabel overpaymentLabel = new JLabel("Your remaining balance as of " + new java.text.SimpleDateFormat("MMMM dd, yyyy").format(new java.util.Date()) + " is: ");
         overpaymentLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         overpaymentPanel.add(overpaymentLabel);
         
@@ -1875,7 +1885,7 @@ public class ISLUStudentPortal extends JFrame {
         headerPanel.setBackground(new Color(10, 45, 90));
         headerPanel.setPreferredSize(new Dimension(0, 40));
         
-        JLabel headerLabel = new JLabel("Breakdown of fees as of September 08, 2025");
+        JLabel headerLabel = new JLabel("Breakdown of fees as of " + new java.text.SimpleDateFormat("MMMM dd, yyyy").format(new java.util.Date()));
         headerLabel.setForeground(Color.WHITE);
         headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
         headerPanel.add(headerLabel);
@@ -1884,10 +1894,7 @@ public class ISLUStudentPortal extends JFrame {
 
         // Table
         String[] columnNames = {"Date", "Description", "Amount"};
-        Object[][] data = {
-            {"", "BEGINNING BALANCE", "21177"},
-            {"08/12/2025", "BPI ONLINE- 2025-08-10 (JV100106)", "(21,177.00)"}
-        };
+        Object[][] data = buildBreakdownData();
 
         DefaultTableModel model = new DefaultTableModel(data, columnNames) {
             @Override
@@ -1903,6 +1910,31 @@ public class ISLUStudentPortal extends JFrame {
         panel.add(scrollPane, BorderLayout.CENTER);
 
         return panel;
+    }
+
+    /**
+     * Builds breakdown data using current amountDue and recorded online payments.
+     * First row shows beginning balance (Amount Due baseline for Prelims).
+     * Subsequent rows are payments with accurate dates pulled from logs.
+     */
+    private Object[][] buildBreakdownData() {
+        java.util.List<Object[]> rows = new java.util.ArrayList<>();
+
+        // Beginning Balance row
+        rows.add(new Object[]{"", "BEGINNING BALANCE", String.format("P %,.2f", Math.max(amountDue, 0.0))});
+
+        // Payment rows from log file for this student
+        java.util.List<PaymentTransaction> transactions = DataManager.loadPaymentTransactions(studentID);
+        for (PaymentTransaction tx : transactions) {
+            String desc = tx.getChannel();
+            String date = tx.getDate();
+            String amount = tx.getAmount(); // already formatted as "P x,xxx.xx"
+            // Display as negative in breakdown with parentheses
+            String negativeAmount = amount.startsWith("P ") ? "(" + amount.substring(2) + ")" : amount;
+            rows.add(new Object[]{date, desc, negativeAmount});
+        }
+
+        return rows.toArray(new Object[0][3]);
     }
 
     private JPanel createTransactionsPanel() {
@@ -1965,7 +1997,7 @@ public class ISLUStudentPortal extends JFrame {
         headerPanel.setPreferredSize(new Dimension(0, 50));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
-        JLabel headerLabel = new JLabel(subItems.toString());
+        JLabel headerLabel = new JLabel(subItems != null ? subItems.toString() : "Transcript of Records");
         headerLabel.setForeground(Color.WHITE);
         headerLabel.setFont(new Font("Arial", Font.BOLD, 16));
         headerPanel.add(headerLabel, BorderLayout.WEST);
@@ -2055,7 +2087,7 @@ public class ISLUStudentPortal extends JFrame {
         headerPanel.setBackground(new Color(10, 45, 90));
         headerPanel.setPreferredSize(new Dimension(0, 50));
         
-        JLabel headerLabel = new JLabel(subItems.get(1));
+        JLabel headerLabel = new JLabel((subItems != null && subItems.getSize() > 1) ? subItems.get(1) : "Online Payment Channels");
         headerLabel.setForeground(Color.WHITE);
         headerLabel.setFont(new Font("Arial", Font.BOLD, 16));
         headerPanel.add(headerLabel);
