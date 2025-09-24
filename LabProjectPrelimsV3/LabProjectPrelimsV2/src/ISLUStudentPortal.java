@@ -1512,11 +1512,12 @@ public class ISLUStudentPortal extends JFrame {
         gbc.insets = new Insets(5, 5, 5, 5);
 
         for (int i = 0; i < data.length; i++) {
-            String label = (String) data[i][0];
-            String value = (String) data[i][1];
-            boolean editable = (Boolean) data[i][2];
-            String fieldType = (String) data[i][3];
-            String[] options = (String[]) data[i][4];
+            // Defensive extraction to avoid ArrayIndexOutOfBounds when some metadata is not provided
+            String label = data[i].length > 0 && data[i][0] != null ? (String) data[i][0] : "";
+            String value = data[i].length > 1 && data[i][1] != null ? (String) data[i][1] : "";
+            boolean editable = data[i].length > 2 && data[i][2] != null ? (Boolean) data[i][2] : false;
+            String fieldType = data[i].length > 3 && data[i][3] != null ? (String) data[i][3] : "text";
+            String[] options = data[i].length > 4 ? (String[]) data[i][4] : null;
 
             // Label
             gbc.gridx = 0;

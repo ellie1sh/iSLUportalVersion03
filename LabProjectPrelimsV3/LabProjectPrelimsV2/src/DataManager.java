@@ -14,6 +14,20 @@ public class DataManager {
     private static final String USER_PASSWORD_FILE = "UserPasswordID.txt";
     private static final String PAYMENT_LOGS_FILE = "paymentLogs.txt";
     
+    // Headers
+    private static final String DATABASE_HEADER = "ID,Last Name,First Name,Middle Name,Date of Birth,Password|ProfileData";
+    private static final String USER_PASSWORD_HEADER = "ID | Password";
+    private static final String PAYMENT_LOGS_HEADER = "Date,Channel,Reference,Amount,StudentID";
+
+    // Ensure headers on class load
+    static {
+        try {
+            ensureHeader(getDatabaseFile(), DATABASE_HEADER, "ID,");
+            ensureHeader(getUserPasswordFile(), USER_PASSWORD_HEADER, "ID | Password");
+            ensureHeader(getPaymentLogsFile(), PAYMENT_LOGS_HEADER, "Date,");
+        } catch (Exception ignored) {}
+    }
+    
     /**
      * Resolve a data file by searching from the working directory and then walking up
      * from the compiled classes location. This makes file access robust regardless
@@ -74,6 +88,10 @@ public class DataManager {
                     if (line.trim().isEmpty()) {
                         continue;
                     }
+                    // Skip header
+                    if (line.startsWith("ID,")) {
+                        continue;
+                    }
                     
                     // Handle lines with profile data (containing | separator)
                     String[] mainParts = line.split("\\|");
@@ -116,6 +134,10 @@ public class DataManager {
                     if (line.trim().isEmpty()) {
                         continue;
                     }
+                    // Skip header
+                    if (line.startsWith("ID,")) {
+                        continue;
+                    }
                     
                     // Handle lines with profile data (containing | separator)
                     String[] mainParts = line.split("\\|");
@@ -152,6 +174,8 @@ public class DataManager {
      */
     public static boolean saveStudentAccount(StudentInfo studentInfo) {
         try {
+            ensureHeader(getDatabaseFile(), DATABASE_HEADER, "ID,");
+            ensureHeader(getUserPasswordFile(), USER_PASSWORD_HEADER, "ID | Password");
             // Save to Database.txt
             File dbFile = getDatabaseFile();
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(dbFile, true))) {
@@ -190,6 +214,8 @@ public class DataManager {
                 try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
+                        if (line.trim().isEmpty()) continue;
+                        if (line.startsWith("ID,")) continue;
                         String[] parts = line.split(",");
                         if (parts.length > 0) {
                             usedIDs.add(parts[0]);
@@ -220,6 +246,7 @@ public class DataManager {
     public static void logPaymentTransaction(String channelName, double amount, String studentID) {
         try {
             File logFile = getPaymentLogsFile();
+            ensureHeader(logFile, PAYMENT_LOGS_HEADER, "Date,");
             
             java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("MM/dd/yyyy hh:mm a");
             String currentDateTime = dateFormat.format(new java.util.Date());
@@ -252,6 +279,8 @@ public class DataManager {
                 try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
+                        if (line.trim().isEmpty()) continue;
+                        if (line.startsWith("Date,")) continue;
                         String[] parts = line.split(",");
                         if (parts.length >= 5) {
                             String transactionStudentID = parts[4].trim();
@@ -294,6 +323,9 @@ public class DataManager {
                     if (line.trim().isEmpty()) {
                         continue;
                     }
+                    if (line.startsWith("ID,")) {
+                        continue;
+                    }
                     
                     // Handle lines with profile data (containing | separator)
                     String[] mainParts = line.split("\\|");
@@ -332,6 +364,7 @@ public class DataManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.trim().isEmpty()) continue;
+                    if (line.startsWith("ID,")) continue;
                         
                         System.out.println("DEBUG: Checking line: " + line);
                         
@@ -376,6 +409,7 @@ public class DataManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.trim().isEmpty()) continue;
+                    if (line.startsWith("ID,")) { lines.add(line); continue; }
                         String[] parts = line.split(",");
                         if (parts.length > 0 && parts[0].equals(studentID)) {
                             // Append profile data to the existing line
@@ -417,6 +451,7 @@ public class DataManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.trim().isEmpty()) continue;
+                    if (line.startsWith("ID,")) { lines.add(line); continue; }
                         String[] parts = line.split(",");
                         if (parts.length > 0 && parts[0].equals(studentID)) {
                             // Update the password (last field)
@@ -444,6 +479,7 @@ public class DataManager {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         if (line.trim().isEmpty()) continue;
+                    if (line.startsWith(USER_PASSWORD_HEADER)) { lines.add(line); continue; }
                         if (line.contains("ID: " + studentID)) {
                             line = "ID: " + studentID + " | Password: " + newPassword;
                         }
@@ -464,6 +500,59 @@ public class DataManager {
         } catch (IOException e) {
             System.err.println("Error updating password: " + e.getMessage());
             return false;
+        }
+    }
+}
+
+/** Attendance model for backend stub */
+class AttendanceRecord {
+    public String subject;
+    public int present;
+    public int absent;
+    public int late;
+    public String percentage;
+    public AttendanceRecord(String subject, int present, int absent, int late, String percentage) {
+        this.subject = subject;
+        this.present = present;
+        this.absent = absent;
+        this.late = late;
+        this.percentage = percentage;
+    }
+}
+
+// Helper to ensure headers in files
+private static void ensureHeader(File file, String headerLine, String headerPrefix) throws IOException {
+    if (!file.exists()) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            writer.write(headerLine);
+            writer.newLine();
+        }
+        return;
+    }
+    // If exists but first non-empty line isn't header, insert
+    boolean hasHeader = false;
+    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.trim().isEmpty()) continue;
+            hasHeader = line.startsWith(headerPrefix);
+            break;
+        }
+    }
+    if (hasHeader) return;
+    java.util.List<String> all = new java.util.ArrayList<>();
+    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+            all.add(line);
+        }
+    }
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+        writer.write(headerLine);
+        writer.newLine();
+        for (String l : all) {
+            writer.write(l);
+            writer.newLine();
         }
     }
 }
