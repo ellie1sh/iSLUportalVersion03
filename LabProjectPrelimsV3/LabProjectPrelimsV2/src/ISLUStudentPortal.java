@@ -106,6 +106,48 @@ public class ISLUStudentPortal extends JFrame {
         
         return data.toArray(new Object[data.size()][4]);
     }
+    
+    /**
+     * Generates transcript data from backend records
+     */
+    private Object[][] generateTranscriptDataFromBackend() {
+        java.util.List<Object[]> data = new java.util.ArrayList<>();
+        
+        // Load completed grade records grouped by semester
+        Map<String, List<GradeRecord>> transcriptRecords = DataManager.getTranscriptRecords(studentID);
+        
+        if (transcriptRecords.isEmpty()) {
+            data.add(new Object[]{"No completed courses found", "", "", ""});
+            return data.toArray(new Object[data.size()][4]);
+        }
+        
+        // Add data for each semester
+        for (Map.Entry<String, List<GradeRecord>> entry : transcriptRecords.entrySet()) {
+            String semester = entry.getKey();
+            List<GradeRecord> grades = entry.getValue();
+            
+            // Add semester header
+            data.add(new Object[]{semester, "", "", ""});
+            
+            // Add courses for this semester
+            for (GradeRecord grade : grades) {
+                // Default units if not found in course schedule
+                String units = "3";
+                
+                data.add(new Object[]{
+                    grade.getSubjectCode(),
+                    grade.getSubjectName(),
+                    String.format("%.2f", grade.getFinalGrade()),
+                    units
+                });
+            }
+            
+            // Add empty row for spacing
+            data.add(new Object[]{"", "", "", ""});
+        }
+        
+        return data.toArray(new Object[data.size()][4]);
+    }
 
     private void initializeComponents() {
         setTitle("iSLU Student Portal");
@@ -323,6 +365,9 @@ public class ISLUStudentPortal extends JFrame {
     }
 
     private void setupLayout(MySinglyLinkedList<String> subItem) {
+        // Clear current content to ensure consistent layout
+        contentPanel.removeAll();
+        
         // Create announcements panel
         JPanel announcementsPanel = createAnnouncementsPanel(subItem);
         loadAnnouncements();
@@ -332,6 +377,10 @@ public class ISLUStudentPortal extends JFrame {
 
         contentPanel.add(announcementsPanel);
         contentPanel.add(statusPanel);
+        
+        // Refresh the display
+        contentPanel.revalidate();
+        contentPanel.repaint();
     }
 
     // Method for the "Grade" sub-panels
@@ -339,15 +388,38 @@ public class ISLUStudentPortal extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
 
-        JLabel titleLabel = new JLabel(subItems.toString(), SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel titleLabel = new JLabel("Current Grades - " + DataManager.getCurrentSemester(studentID));
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        JButton refreshButton = new JButton("Refresh");
+        refreshButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        refreshButton.addActionListener(e -> refreshGrades());
+        headerPanel.add(refreshButton, BorderLayout.EAST);
+        
+        panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Convert the LinkedList to a String array for JTable column headers
-        String[] columnNames ={"Subject", "Prelim Grade", "Midterm Grade","Tentative Final Grade","Final Grade"};
-
-        // Create an empty data array
-        Object[][] data = new Object[0][columnNames.length];
+        // Load grade records from backend
+        List<GradeRecord> gradeRecords = DataManager.getCurrentSemesterGrades(studentID);
+        
+        String[] columnNames = {"Subject", "Prelim Grade", "Midterm Grade", "Tentative Final Grade", "Final Grade"};
+        
+        // Convert grade records to table data
+        Object[][] data;
+        if (gradeRecords.isEmpty()) {
+            data = new Object[][]{{"No grades available", "-", "-", "-", "-"}};
+        } else {
+            data = new Object[gradeRecords.size()][];
+            for (int i = 0; i < gradeRecords.size(); i++) {
+                data[i] = gradeRecords.get(i).toTableRow();
+            }
+        }
 
         DefaultTableModel tableModel = new DefaultTableModel(data, columnNames) {
             @Override
@@ -355,40 +427,44 @@ public class ISLUStudentPortal extends JFrame {
                 return false; // Make all cells non-editable
             }
         };
+        
         JTable table = new JTable(tableModel);
-        table.setPreferredSize(new Dimension(500, 300));
+        table.setRowHeight(25);
         table.setFillsViewportHeight(true);
-        table.getTableHeader().setReorderingAllowed(false); // Disable column reordering
-        table.setAutoCreateRowSorter(false); // Disable sorting
-
-        // Populate the table with dummy data and calculate the final grade
-        // Note: The grades are now stored as numbers for calculation
-        Object[] grades1 = {"Intro to Programming", 90, 92, 91};
-        Object[] grades2 = {"Data Structures", 85, 88, 87};
-        Object[] grades3 = {"Algorithms", 95, 96, 95};
-
-        // Calculate the average for each set of grades
-        double average1 = (double) ((int) grades1[1] + (int) grades1[2] + (int) grades1[3]) / 3.0;
-        double average2 = (double) ((int) grades2[1] + (int) grades2[2] + (int) grades2[3]) / 3.0;
-        double average3 = (double) ((int) grades3[1] + (int) grades3[2] + (int) grades3[3]) / 3.0;
-
-        // Add the calculated average to the end of each grades array
-        // You can format the average to two decimal places
-        grades1 = new Object[] {grades1[0], grades1[1], grades1[2], grades1[3], String.format("%.2f", average1)};
-        grades2 = new Object[] {grades2[0], grades1[1], grades2[2], grades2[3], String.format("%.2f", average2)};
-        grades3 = new Object[] {grades3[0], grades3[1], grades3[2], grades3[3], String.format("%.2f", average3)};
-
-        tableModel.addRow(grades1);
-        tableModel.addRow(grades2);
-        tableModel.addRow(grades3);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.setAutoCreateRowSorter(false);
+        table.setFont(new Font("Arial", Font.PLAIN, 12));
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(new Color(230, 240, 255));
 
         JScrollPane scrollPane = new JScrollPane(table);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(5, 20, 0, 20));
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-        panel.add(titleLabel, BorderLayout.NORTH);
         panel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Footer with information
+        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        footerPanel.setBackground(Color.WHITE);
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel footerLabel = new JLabel("Note: Grades are updated by faculty members. Final grades will be available after semester completion.");
+        footerLabel.setFont(new Font("Arial", Font.ITALIC, 10));
+        footerLabel.setForeground(Color.GRAY);
+        footerPanel.add(footerLabel);
+        
+        panel.add(footerPanel, BorderLayout.SOUTH);
 
         return panel;
+    }
+    
+    /**
+     * Refreshes grade data
+     */
+    private void refreshGrades() {
+        // Refresh the grades content
+        showContent(new MenuItem("📊 Grades", PortalUtils.createGradeSubList()));
+        JOptionPane.showMessageDialog(this, "Grades data refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
     }
 
     // Method for the Announcements sub-panels
@@ -632,8 +708,10 @@ public class ISLUStudentPortal extends JFrame {
         header.add(right, BorderLayout.EAST);
         schedulePanel.add(header, BorderLayout.NORTH);
 
-        // Build dynamic schedule from provided course list equivalent
-        List<CourseScheduleItem> courses = getSampleCourses();
+        // Load course schedules from backend
+        List<CourseSchedule> backendCourses = DataManager.loadCourseSchedules(studentID);
+        // Convert to CourseScheduleItem for compatibility with existing display logic
+        List<CourseScheduleItem> courses = convertToScheduleItems(backendCourses);
         int totalUnits = courses.stream().mapToInt(c -> c.units).sum();
 
         // Time slots (30-minute increments) based on min/max course times
@@ -688,6 +766,26 @@ public class ISLUStudentPortal extends JFrame {
             }
         }
         return "";
+    }
+    
+    /**
+     * Converts CourseSchedule objects to CourseScheduleItem objects for compatibility
+     */
+    private List<CourseScheduleItem> convertToScheduleItems(List<CourseSchedule> backendCourses) {
+        List<CourseScheduleItem> items = new ArrayList<>();
+        for (CourseSchedule course : backendCourses) {
+            items.add(new CourseScheduleItem(
+                course.getClassCode(),
+                course.getCourseNumber(),
+                course.getCourseDescription(),
+                course.getUnits(),
+                course.getStartTime(),
+                course.getEndTime(),
+                course.getDays(),
+                course.getRoom()
+            ));
+        }
+        return items;
     }
 
     private static LocalTime roundDownToHalfHour(LocalTime time) {
@@ -802,16 +900,38 @@ public class ISLUStudentPortal extends JFrame {
     // method for attendance Content
     private Component showAttendanceContent(MySinglyLinkedList<String> subItems) {
         JPanel attendancePanel = new JPanel(new BorderLayout());
-        attendancePanel.setBorder(BorderFactory.createTitledBorder(subItems.toString()));
+        attendancePanel.setBorder(BorderFactory.createTitledBorder("Attendance Records"));
+
+        // Header panel with info and refresh button
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        JLabel infoLabel = new JLabel("Your attendance records for the current semester");
+        infoLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        headerPanel.add(infoLabel, BorderLayout.WEST);
+        
+        JButton refreshButton = new JButton("Refresh");
+        refreshButton.addActionListener(e -> refreshAttendanceData());
+        headerPanel.add(refreshButton, BorderLayout.EAST);
+        
+        attendancePanel.add(headerPanel, BorderLayout.NORTH);
 
         String[] columnNames = {"Subject", "Present", "Absent", "Late", "Percentage"};
-        Object[][] data = {
-                {"NSTP-CWTS 1", "15", "1", "0", "93.75%"},
-                {"Programming 2", "14", "2", "1", "87.5%"},
-                {"Data Structures", "16", "0", "1", "100%"},
-                {"Database Systems", "15", "1", "0", "93.75%"},
-                {"Web Development", "13", "2", "2", "81.25%"}
-        };
+        
+        // Load attendance data from backend
+        java.util.Map<String, AttendanceSummary> attendanceSummary = DataManager.getAttendanceSummary(studentID);
+        java.util.List<Object[]> dataList = new java.util.ArrayList<>();
+        
+        for (AttendanceSummary summary : attendanceSummary.values()) {
+            dataList.add(summary.toTableRow());
+        }
+        
+        // If no data found, show a message
+        if (dataList.isEmpty()) {
+            dataList.add(new Object[]{"No attendance records found", "-", "-", "-", "-"});
+        }
+        
+        Object[][] data = dataList.toArray(new Object[dataList.size()][]);
 
         DefaultTableModel attendanceModel = new DefaultTableModel(data, columnNames) {
             @Override
@@ -823,10 +943,38 @@ public class ISLUStudentPortal extends JFrame {
         attendanceTable.setRowHeight(25);
         attendanceTable.getTableHeader().setReorderingAllowed(false); // Disable column reordering
         attendanceTable.setAutoCreateRowSorter(false); // Disable sorting
+        
+        // Style the table
+        attendanceTable.setFont(new Font("Arial", Font.PLAIN, 12));
+        attendanceTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        attendanceTable.setGridColor(new Color(220, 220, 220));
+        attendanceTable.setSelectionBackground(new Color(230, 240, 255));
+        
         JScrollPane scrollPane = new JScrollPane(attendanceTable);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         attendancePanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Footer with faculty update info
+        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JLabel footerLabel = new JLabel("Note: Attendance records are updated by faculty members");
+        footerLabel.setFont(new Font("Arial", Font.ITALIC, 10));
+        footerLabel.setForeground(Color.GRAY);
+        footerPanel.add(footerLabel);
+        
+        attendancePanel.add(footerPanel, BorderLayout.SOUTH);
+        
         return attendancePanel;
+    }
+    
+    /**
+     * Refreshes attendance data (for future use when real-time updates are needed)
+     */
+    private void refreshAttendanceData() {
+        // Refresh the attendance content
+        showContent(new MenuItem("📌 Attendance", PortalUtils.createAttendanceSubList()));
+        JOptionPane.showMessageDialog(this, "Attendance data refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
     }
     // method for Personal Details Content
     private void showPersonalDetailsContent(MySinglyLinkedList<String> subItems) {
@@ -1371,35 +1519,35 @@ public class ISLUStudentPortal extends JFrame {
         
         // General Information section
         Object[][] generalData = {
-            {"Gender", profileData != null ? profileData.getGender() : "Not specified"},
-            {"Citizenship", profileData != null ? profileData.getCitizenship() : "Not specified"},
-            {"Religion", profileData != null ? profileData.getReligion() : "Not specified"},
-            {"Civil Status", profileData != null ? profileData.getCivilStatus() : "Not specified"},
-            {"Birthplace", profileData != null ? profileData.getBirthplace() : "Not specified"},
-            {"Nationality", profileData != null ? profileData.getNationality() : "Not specified"}
+            {"Gender", profileData != null ? profileData.getGender() : "Not specified", false, "text", new String[]{}},
+            {"Citizenship", profileData != null ? profileData.getCitizenship() : "Not specified", false, "text", new String[]{}},
+            {"Religion", profileData != null ? profileData.getReligion() : "Not specified", false, "text", new String[]{}},
+            {"Civil Status", profileData != null ? profileData.getCivilStatus() : "Not specified", false, "text", new String[]{}},
+            {"Birthplace", profileData != null ? profileData.getBirthplace() : "Not specified", false, "text", new String[]{}},
+            {"Nationality", profileData != null ? profileData.getNationality() : "Not specified", false, "text", new String[]{}}
         };
         parentPanel.add(createSectionPanel("General Information", generalData));
         parentPanel.add(Box.createVerticalStrut(20));
         
         // Contact Information section
         Object[][] contactData = {
-            {"Home Address", profileData != null ? profileData.getHomeAddress() : "Not specified"},
-            {"Home Telephone", profileData != null ? profileData.getHomeTel() : "Not specified"},
-            {"Baguio Address", profileData != null ? profileData.getBaguioAddress() : "Not specified"},
-            {"Baguio Telephone", profileData != null ? profileData.getBaguioTel() : "Not specified"},
-            {"Cellphone", profileData != null ? profileData.getCellphone() : "Not specified"}
+            {"Home Address", profileData != null ? profileData.getHomeAddress() : "Not specified", false, "text", new String[]{}},
+            {"Home Telephone", profileData != null ? profileData.getHomeTel() : "Not specified", false, "text", new String[]{}},
+            {"Baguio Address", profileData != null ? profileData.getBaguioAddress() : "Not specified", false, "text", new String[]{}},
+            {"Baguio Telephone", profileData != null ? profileData.getBaguioTel() : "Not specified", false, "text", new String[]{}},
+            {"Cellphone", profileData != null ? profileData.getCellphone() : "Not specified", false, "text", new String[]{}}
         };
         parentPanel.add(createSectionPanel("Contact Information", contactData));
         parentPanel.add(Box.createVerticalStrut(20));
         
         // Contact Persons section
         Object[][] contactPersonsData = {
-            {"Father's Name", profileData != null ? profileData.getFatherName() : "Not specified"},
-            {"Father's Occupation", profileData != null ? profileData.getFatherOcc() : "Not specified"},
-            {"Mother's Name", profileData != null ? profileData.getMotherName() : "Not specified"},
-            {"Mother's Occupation", profileData != null ? profileData.getMotherOcc() : "Not specified"},
-            {"Guardian's Name", profileData != null ? profileData.getGuardianName() : "Not specified"},
-            {"Guardian's Address", profileData != null ? profileData.getGuardianAddress() : "Not specified"}
+            {"Father's Name", profileData != null ? profileData.getFatherName() : "Not specified", false, "text", new String[]{}},
+            {"Father's Occupation", profileData != null ? profileData.getFatherOcc() : "Not specified", false, "text", new String[]{}},
+            {"Mother's Name", profileData != null ? profileData.getMotherName() : "Not specified", false, "text", new String[]{}},
+            {"Mother's Occupation", profileData != null ? profileData.getMotherOcc() : "Not specified", false, "text", new String[]{}},
+            {"Guardian's Name", profileData != null ? profileData.getGuardianName() : "Not specified", false, "text", new String[]{}},
+            {"Guardian's Address", profileData != null ? profileData.getGuardianAddress() : "Not specified", false, "text", new String[]{}}
         };
         parentPanel.add(createSectionPanel("Contact Persons", contactPersonsData));
     }
@@ -1810,7 +1958,9 @@ public class ISLUStudentPortal extends JFrame {
         overpaymentPanel.setLayout(new BoxLayout(overpaymentPanel, BoxLayout.Y_AXIS));
         overpaymentPanel.setBackground(Color.WHITE);
         
-        JLabel overpaymentLabel = new JLabel("Your remaining balance as of September 17, 2025 is: ");
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("MMMM dd, yyyy");
+        String currentDate = dateFormat.format(new java.util.Date());
+        JLabel overpaymentLabel = new JLabel("Your remaining balance as of " + currentDate + " is: ");
         overpaymentLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         overpaymentPanel.add(overpaymentLabel);
         
@@ -1870,24 +2020,46 @@ public class ISLUStudentPortal extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
 
-        // Header
+        // Header with current date
         JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         headerPanel.setBackground(new Color(10, 45, 90));
         headerPanel.setPreferredSize(new Dimension(0, 40));
         
-        JLabel headerLabel = new JLabel("Breakdown of fees as of September 08, 2025");
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("MMMM dd, yyyy");
+        String currentDate = dateFormat.format(new java.util.Date());
+        JLabel headerLabel = new JLabel("Breakdown of fees as of " + currentDate);
         headerLabel.setForeground(Color.WHITE);
         headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
         headerPanel.add(headerLabel);
         
         panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Table
+        // Table with dynamic data including payment receipts
         String[] columnNames = {"Date", "Description", "Amount"};
-        Object[][] data = {
-            {"", "BEGINNING BALANCE", "21177"},
-            {"08/12/2025", "BPI ONLINE- 2025-08-10 (JV100106)", "(21,177.00)"}
-        };
+        java.util.List<Object[]> dataList = new java.util.ArrayList<>();
+        
+        // Beginning balance
+        dataList.add(new Object[]{"", "BEGINNING BALANCE", String.format("P %.2f", amountDue + currentBalance)});
+        
+        // Add payment transactions as receipts
+        List<PaymentTransaction> transactions = DataManager.loadPaymentTransactions(studentID);
+        for (PaymentTransaction transaction : transactions) {
+            String description = transaction.getChannel() + " - " + transaction.getReference();
+            dataList.add(new Object[]{
+                transaction.getDate(),
+                description,
+                "(" + transaction.getAmount() + ")"
+            });
+        }
+        
+        // Current balance
+        if (amountDue > 0) {
+            dataList.add(new Object[]{"", "CURRENT BALANCE DUE", String.format("P %.2f", amountDue)});
+        } else {
+            dataList.add(new Object[]{"", "OVERPAYMENT BALANCE", String.format("P (%.2f)", currentBalance)});
+        }
+        
+        Object[][] data = dataList.toArray(new Object[dataList.size()][]);
 
         DefaultTableModel model = new DefaultTableModel(data, columnNames) {
             @Override
@@ -1898,6 +2070,8 @@ public class ISLUStudentPortal extends JFrame {
         JTable table = new JTable(model);
         table.setRowHeight(30);
         table.getTableHeader().setBackground(new Color(240, 240, 240));
+        table.setFont(new Font("Arial", Font.PLAIN, 11));
+        table.setGridColor(new Color(220, 220, 220));
         
         JScrollPane scrollPane = new JScrollPane(table);
         panel.add(scrollPane, BorderLayout.CENTER);
@@ -1975,8 +2149,8 @@ public class ISLUStudentPortal extends JFrame {
         // Create transcript table with all semesters
         String[] columnNames = {"Course Number", "Descriptive Title", "Grade", "Units"};
         
-        // Generate random grades (76-99)
-        Object[][] transcriptData = generateTranscriptData();
+        // Load transcript data from backend
+        Object[][] transcriptData = generateTranscriptDataFromBackend();
         
         DefaultTableModel transcriptModel = new DefaultTableModel(transcriptData, columnNames) {
             @Override
