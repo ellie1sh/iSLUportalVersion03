@@ -34,6 +34,7 @@ public class ISLUStudentPortal extends JFrame {
     public ISLUStudentPortal(String studentID) {
         this.studentID = studentID;
         this.studentName = getStudentNameFromDatabase(studentID);
+        this.semester = DataManager.getCurrentSemester(studentID);
         
         // Initialize random amounts for each account
         this.amountDue = generateRandomAmountDue();
@@ -303,10 +304,7 @@ public class ISLUStudentPortal extends JFrame {
         sidebar.add(semesterLabel);
 
         // Navigation menu items
-        JFrame frame = new JFrame("Student Portal");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(800, 600);
-        frame.setLocationRelativeTo(null);
+        // Removed unused JFrame instantiation to avoid nested frames
 
 
         menu = PortalUtils.createIntegratedMenuSystem();
@@ -1088,7 +1086,9 @@ public class ISLUStudentPortal extends JFrame {
         gbc.gridy = 2;
         gbc.insets = new Insets(0, 50, 50, 50);
         
-        JLabel clickLabel = new JLabel("<html><u style='color: blue;'>click here to go back home</u></html>");
+        JLabel clickLabel = new JLabel("click here to go back home");
+        clickLabel.setForeground(new Color(0, 102, 204));
+        clickLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         clickLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         clickLabel.setHorizontalAlignment(SwingConstants.CENTER);
         clickLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
