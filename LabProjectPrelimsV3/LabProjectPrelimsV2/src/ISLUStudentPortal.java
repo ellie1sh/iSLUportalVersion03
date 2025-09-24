@@ -760,18 +760,27 @@ public class ISLUStudentPortal extends JFrame {
 
         JScrollPane scrollPane = new JScrollPane(scheduleTable);
         
-        // Create a panel to hold both the table and the block text
-        JPanel tablePanel = new JPanel(new BorderLayout());
-        tablePanel.add(scrollPane, BorderLayout.CENTER);
+        // Create a panel to hold both the list table and weekly view
+        JPanel mainContentPanel = new JPanel(new BorderLayout());
         
-        // Block text positioned just below the table - bolded and emphasized
+        // Top panel for the list table
+        JPanel listTablePanel = new JPanel(new BorderLayout());
+        listTablePanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Block text positioned just below the list table - bolded and emphasized
         JLabel blockLabel = new JLabel("BLOCK: BSIT 2-3");
         blockLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        blockLabel.setBorder(BorderFactory.createEmptyBorder(8, 10, 5, 10));
+        blockLabel.setBorder(BorderFactory.createEmptyBorder(8, 10, 10, 10));
         blockLabel.setHorizontalAlignment(SwingConstants.LEFT);
-        tablePanel.add(blockLabel, BorderLayout.SOUTH);
+        listTablePanel.add(blockLabel, BorderLayout.SOUTH);
         
-        schedulePanel.add(tablePanel, BorderLayout.CENTER);
+        mainContentPanel.add(listTablePanel, BorderLayout.NORTH);
+        
+        // Add weekly view below the list table
+        JPanel weeklyViewPanel = createWeeklyView(backendCourses);
+        mainContentPanel.add(weeklyViewPanel, BorderLayout.CENTER);
+        
+        schedulePanel.add(mainContentPanel, BorderLayout.CENTER);
 
         // Footer with total units only
         JLabel totalUnitsLabel = new JLabel("Total Units: " + totalUnits);
@@ -780,6 +789,99 @@ public class ISLUStudentPortal extends JFrame {
         schedulePanel.add(totalUnitsLabel, BorderLayout.SOUTH);
 
         return schedulePanel;
+    }
+
+    /**
+     * Creates the weekly calendar view showing time slots and course placements
+     */
+    private JPanel createWeeklyView(List<CourseSchedule> courses) {
+        JPanel weeklyPanel = new JPanel(new BorderLayout());
+        weeklyPanel.setBorder(BorderFactory.createTitledBorder("Weekly View"));
+        
+        // Convert to CourseScheduleItem for compatibility with existing logic
+        List<CourseScheduleItem> scheduleItems = convertToScheduleItems(courses);
+        
+        // Calculate time range
+        LocalTime minStart = scheduleItems.stream().map(c -> c.startTime).min(LocalTime::compareTo).orElse(LocalTime.of(7, 0));
+        LocalTime maxEnd = scheduleItems.stream().map(c -> c.endTime).max(LocalTime::compareTo).orElse(LocalTime.of(18, 0));
+        minStart = roundDownToHalfHour(minStart);
+        maxEnd = roundUpToHalfHour(maxEnd);
+        
+        // Column names for weekly view
+        String[] weeklyColumnNames = {"Time", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+        
+        // Build weekly data rows
+        List<Object[]> weeklyRows = new ArrayList<>();
+        for (LocalTime slot = minStart; slot.isBefore(maxEnd); slot = slot.plusMinutes(30)) {
+            LocalTime next = slot.plusMinutes(30);
+            Object[] row = new Object[weeklyColumnNames.length];
+            row[0] = formatTimeRange(slot, next);
+            row[1] = courseLabelAtTime(scheduleItems, slot, "M");
+            row[2] = courseLabelAtTime(scheduleItems, slot, "T");
+            row[3] = courseLabelAtTime(scheduleItems, slot, "W");
+            row[4] = courseLabelAtTime(scheduleItems, slot, "TH");
+            row[5] = courseLabelAtTime(scheduleItems, slot, "F");
+            row[6] = courseLabelAtTime(scheduleItems, slot, "S");
+            weeklyRows.add(row);
+        }
+        
+        DefaultTableModel weeklyModel = new DefaultTableModel(weeklyRows.toArray(new Object[0][]), weeklyColumnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        JTable weeklyTable = new JTable(weeklyModel);
+        weeklyTable.setRowHeight(35);
+        weeklyTable.setFillsViewportHeight(true);
+        weeklyTable.getTableHeader().setReorderingAllowed(false);
+        weeklyTable.setAutoCreateRowSorter(false);
+        weeklyTable.setFont(new Font("Arial", Font.PLAIN, 11));
+        weeklyTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        weeklyTable.setGridColor(new Color(200, 200, 200));
+        weeklyTable.setSelectionBackground(new Color(230, 240, 255));
+        weeklyTable.getTableHeader().setBackground(new Color(220, 220, 220));
+        
+        // Set column widths for weekly view
+        weeklyTable.getColumnModel().getColumn(0).setPreferredWidth(100); // Time
+        for (int i = 1; i < weeklyColumnNames.length; i++) {
+            weeklyTable.getColumnModel().getColumn(i).setPreferredWidth(120); // Days
+        }
+        
+        // Color coding for different courses
+        weeklyTable.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, 
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                if (column == 0) {
+                    // Time column - light gray background
+                    setBackground(new Color(245, 245, 245));
+                    setHorizontalAlignment(SwingConstants.CENTER);
+                } else if (value != null && !value.toString().trim().isEmpty()) {
+                    // Course cells - light blue background
+                    setBackground(new Color(230, 240, 255));
+                    setHorizontalAlignment(SwingConstants.CENTER);
+                } else {
+                    // Empty cells - white background
+                    setBackground(Color.WHITE);
+                }
+                
+                if (isSelected) {
+                    setBackground(new Color(184, 207, 229));
+                }
+                
+                return this;
+            }
+        });
+        
+        JScrollPane weeklyScrollPane = new JScrollPane(weeklyTable);
+        weeklyScrollPane.setPreferredSize(new Dimension(0, 300)); // Fixed height for weekly view
+        weeklyPanel.add(weeklyScrollPane, BorderLayout.CENTER);
+        
+        return weeklyPanel;
     }
 
     private String courseLabelAtTime(List<CourseScheduleItem> courses, LocalTime slot, String day) {
@@ -824,9 +926,13 @@ public class ISLUStudentPortal extends JFrame {
         LocalTime base = time.withSecond(0).withNano(0);
         return minute < 30 ? base.withMinute(30) : base.plusHours(1).withMinute(0);
     }
-
-    private static String formatTimeRange(LocalTime start, LocalTime end) {
-        return formatTime(start) + "-" + formatTime(end);
+    
+    /**
+     * Formats a time range for display in the weekly view
+     */
+    private String formatTimeRange(LocalTime start, LocalTime end) {
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("h:mm");
+        return start.format(formatter) + " - " + end.format(formatter);
     }
 
     private static String formatTime(LocalTime t) {
