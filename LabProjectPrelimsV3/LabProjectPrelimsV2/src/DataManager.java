@@ -542,22 +542,81 @@ public class DataManager {
     }
     
     /**
-     * Faculty function to update attendance (placeholder for future faculty integration)
+     * Faculty function to update attendance (PLACEHOLDER - waiting for faculty portal integration)
+     * This will be called by the faculty portal in real-time during class to mark students as:
+     * - Present, Absent, or Late
+     * 
      * @param studentID The student ID
      * @param subjectCode The subject code
      * @param subjectName The subject name
      * @param date The date
-     * @param status The attendance status
-     * @param remarks Optional remarks
+     * @param status The attendance status (Present/Absent/Late)
+     * @param remarks Optional remarks from faculty
      * @return true if successful, false otherwise
      */
     public static boolean updateAttendanceRecord(String studentID, String subjectCode, 
             String subjectName, java.time.LocalDate date, String status, String remarks) {
-        // TODO: This function will be implemented when faculty account system is integrated
-        // For now, it's a placeholder that returns false to indicate it's not yet functional
-        System.out.println("Faculty attendance update function called - not yet implemented");
+        // TODO: This function will be implemented when faculty portal code is ready
+        // Faculty will mark attendance in real-time during class
+        // This will immediately update the student's attendance view
+        System.out.println("PLACEHOLDER: Faculty attendance marking system");
+        System.out.println("Will integrate with faculty portal for real-time attendance updates");
         System.out.println("Parameters: " + studentID + ", " + subjectCode + ", " + 
                           subjectName + ", " + date + ", " + status + ", " + remarks);
+        return false;
+    }
+    
+    /**
+     * Student function to submit reason for absence/tardiness
+     * This allows students to provide explanations for their absences or tardiness
+     * 
+     * @param studentID The student ID
+     * @param subjectCode The subject code
+     * @param date The date of absence/tardiness
+     * @param reason The student's reason/explanation
+     * @return true if successful, false otherwise
+     */
+    public static boolean submitAttendanceReason(String studentID, String subjectCode, 
+            java.time.LocalDate date, String reason) {
+        try {
+            // Update the attendance record with student's reason
+            File attendanceFile = getAttendanceRecordsFile();
+            if (attendanceFile.exists()) {
+                java.util.List<String> lines = new java.util.ArrayList<>();
+                try (BufferedReader reader = new BufferedReader(new FileReader(attendanceFile))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                            lines.add(line);
+                            continue;
+                        }
+                        
+                        AttendanceRecord record = AttendanceRecord.fromCsvFormat(line);
+                        if (record != null && 
+                            studentID.equals(record.getStudentID()) && 
+                            subjectCode.equals(record.getSubjectCode()) && 
+                            date.equals(record.getDate())) {
+                            // Update the record with student's reason
+                            record.setRemarks(reason);
+                            lines.add(record.toCsvFormat());
+                        } else {
+                            lines.add(line);
+                        }
+                    }
+                }
+                
+                // Write back to file
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(attendanceFile))) {
+                    for (String line : lines) {
+                        writer.write(line);
+                        writer.newLine();
+                    }
+                }
+                return true;
+            }
+        } catch (Exception e) {
+            System.err.println("Error updating attendance reason: " + e.getMessage());
+        }
         return false;
     }
     
