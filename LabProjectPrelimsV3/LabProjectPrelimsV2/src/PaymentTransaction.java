@@ -3,24 +3,28 @@
  */
 public class PaymentTransaction {
     private String date;
-    private String channel;
+    private String paymentChannel;
     private String reference;
-    private String amount;
+    private double amount;
+    private String studentID;
     
-    public PaymentTransaction(String date, String channel, String reference, String amount) {
+    public PaymentTransaction(String date, String paymentChannel, String reference, double amount, String studentID) {
         this.date = date;
-        this.channel = channel;
+        this.paymentChannel = paymentChannel;
         this.reference = reference;
         this.amount = amount;
+        this.studentID = studentID;
     }
     
     // Getters
     public String getDate() { return date; }
-    public String getChannel() { return channel; }
+    public String getPaymentChannel() { return paymentChannel; }
+    public String getChannel() { return paymentChannel; } // Backward compatibility
     public String getReference() { return reference; }
-    public String getAmount() { return amount; }
+    public double getAmount() { return amount; }
+    public String getStudentID() { return studentID; }
     
     public Object[] toTableRow() {
-        return new Object[]{date, channel, reference, amount};
+        return new Object[]{date, paymentChannel, reference, String.format("₱ %.2f", amount)};
     }
 }

@@ -266,11 +266,16 @@ public class DataManager {
                         if (parts.length >= 5) {
                             String transactionStudentID = parts[4].trim();
                             if (studentID.equals(transactionStudentID)) {
+                                // Parse amount (remove P and commas)
+                                String amountStr = parts[3].trim().replaceAll("[P, ]", "");
+                                double amount = Double.parseDouble(amountStr);
+                                
                                 transactions.add(new PaymentTransaction(
                                     parts[0].trim(), // Date
-                                    parts[1].trim(), // Channel
+                                    parts[1].trim(), // paymentChannel
                                     parts[2].trim(), // Reference
-                                    parts[3].trim()  // Amount
+                                    amount,          // Amount
+                                    parts[4].trim()  // studentID
                                 ));
                             }
                         }
@@ -745,6 +750,187 @@ public class DataManager {
         }
         
         return transcriptMap;
+    }
+    
+    /**
+     * Gets student schedule for the current semester
+     */
+    public static List<CourseSchedule> getStudentSchedule(String studentID) {
+        List<CourseSchedule> schedules = new ArrayList<>();
+        
+        try {
+            File scheduleFile = getCourseSchedulesFile();
+            if (!scheduleFile.exists()) {
+                return schedules;
+            }
+            
+            try (BufferedReader reader = new BufferedReader(new FileReader(scheduleFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                        continue;
+                    }
+                    
+                    String[] parts = line.split(",");
+                    if (parts.length >= 11) {
+                        String storedStudentID = parts[0].trim();
+                        if (studentID.equals(storedStudentID)) {
+                            // Parse time strings to LocalTime
+                            java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("H:mm");
+                            java.time.LocalTime startTime = java.time.LocalTime.parse(parts[5].trim(), timeFormatter);
+                            java.time.LocalTime endTime = java.time.LocalTime.parse(parts[6].trim(), timeFormatter);
+                            
+                            CourseSchedule schedule = new CourseSchedule(
+                                parts[0].trim(),  // studentID
+                                parts[1].trim(),  // classCode
+                                parts[2].trim(),  // courseNumber
+                                parts[3].trim(),  // courseDescription
+                                Integer.parseInt(parts[4].trim()),  // units
+                                startTime,        // startTime
+                                endTime,          // endTime
+                                parts[7].trim(),  // days
+                                parts[8].trim(),  // room
+                                parts[9].trim(),  // instructor
+                                parts[10].trim() // semester
+                            );
+                            schedules.add(schedule);
+                        }
+                    }
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+            System.err.println("Error reading course schedules: " + e.getMessage());
+        }
+        
+        return schedules;
+    }
+    
+    /**
+     * Gets student attendance records
+     */
+    public static List<AttendanceRecord> getStudentAttendance(String studentID) {
+        List<AttendanceRecord> attendanceRecords = new ArrayList<>();
+        
+        try {
+            File attendanceFile = getAttendanceRecordsFile();
+            if (!attendanceFile.exists()) {
+                return attendanceRecords;
+            }
+            
+            try (BufferedReader reader = new BufferedReader(new FileReader(attendanceFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                        continue;
+                    }
+                    
+                    String[] parts = line.split(",");
+                    if (parts.length >= 6) {
+                        String storedStudentID = parts[0].trim();
+                        if (studentID.equals(storedStudentID)) {
+                            // Parse date string to LocalDate
+                            java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("M/d/yyyy");
+                            java.time.LocalDate date = java.time.LocalDate.parse(parts[3].trim(), dateFormatter);
+                            
+                            AttendanceRecord record = new AttendanceRecord(
+                                parts[0].trim(),  // studentID
+                                parts[1].trim(),  // subjectCode
+                                parts[2].trim(),  // subjectName
+                                date,             // date
+                                parts[4].trim(),  // status
+                                parts.length > 5 ? parts[5].trim() : ""  // remarks
+                            );
+                            attendanceRecords.add(record);
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading attendance records: " + e.getMessage());
+        }
+        
+        return attendanceRecords;
+    }
+    
+    /**
+     * Gets payment transactions for a student
+     */
+    public static List<PaymentTransaction> getPaymentTransactions(String studentID) {
+        List<PaymentTransaction> transactions = new ArrayList<>();
+        
+        try {
+            File paymentFile = getPaymentLogsFile();
+            if (!paymentFile.exists()) {
+                return transactions;
+            }
+            
+            try (BufferedReader reader = new BufferedReader(new FileReader(paymentFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                        continue;
+                    }
+                    
+                    String[] parts = line.split(",");
+                    if (parts.length >= 5) {
+                        String storedStudentID = parts[4].trim();
+                        if (studentID.equals(storedStudentID)) {
+                            // Parse amount (remove P and commas)
+                            String amountStr = parts[3].trim().replaceAll("[P, ]", "");
+                            double amount = Double.parseDouble(amountStr);
+                            
+                            PaymentTransaction transaction = new PaymentTransaction(
+                                parts[0].trim(),  // date
+                                parts[1].trim(),  // paymentChannel
+                                parts[2].trim(),  // reference
+                                amount,           // amount
+                                parts[4].trim()   // studentID
+                            );
+                            transactions.add(transaction);
+                        }
+                    }
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+            System.err.println("Error reading payment transactions: " + e.getMessage());
+        }
+        
+        return transactions;
+    }
+    
+    /**
+     * Gets attendance summary for a student (fixed return type)
+     */
+    public static AttendanceSummary getAttendanceSummaryForStudent(String studentID) {
+        List<AttendanceRecord> records = getStudentAttendance(studentID);
+        
+        int presentCount = 0;
+        int absentCount = 0;
+        int lateCount = 0;
+        
+        for (AttendanceRecord record : records) {
+            String status = record.getStatus().toLowerCase();
+            if (status.equals("present")) {
+                presentCount++;
+            } else if (status.equals("absent")) {
+                absentCount++;
+            } else if (status.equals("late")) {
+                lateCount++;
+            }
+        }
+        
+        int totalClasses = presentCount + absentCount + lateCount;
+        double percentage = totalClasses > 0 ? (double) presentCount / totalClasses * 100 : 0.0;
+        
+        // Create a summary with overall attendance data
+        AttendanceSummary summary = new AttendanceSummary("Overall Attendance");
+        
+        // Set the counts using the increment methods
+        for (int i = 0; i < presentCount; i++) summary.incrementPresent();
+        for (int i = 0; i < absentCount; i++) summary.incrementAbsent();
+        for (int i = 0; i < lateCount; i++) summary.incrementLate();
+        
+        return summary;
     }
 }
 

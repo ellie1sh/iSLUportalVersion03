@@ -1,18 +1,28 @@
 import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import javax.swing.Timer;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Map;
 
+/**
+ * ISLU Student Portal - Main Application Window
+ * A comprehensive student information system built entirely in Java Swing
+ * Features: Login, Dashboard, Schedule, Attendance, Grades, Statement of Accounts, etc.
+ */
 public class ISLUStudentPortal extends JFrame {
+    // UI Components
     private JPanel mainPanel;
     private JPanel contentPanel;
     private JPanel sidebarPanel;
@@ -24,25 +34,36 @@ public class ISLUStudentPortal extends JFrame {
     private JPanel mainCardHolder;
     private CardLayout mainCardLayout;
     private MyDoublyLinkedList<MenuItem> menu;
+    private MenuItem currentMenuItem;
 
     // Student data
     private String studentID;
     private String studentName;
     private String semester = "FIRST SEMESTER, 2025-2026";
     private String status = "CURRENTLY ENROLLED THIS FIRST SEMESTER, 2025-2026 IN BSIT 2.";
+    
+    // Financial data
+    private double currentBalance;
+    private double amountDue;
 
     public ISLUStudentPortal(String studentID) {
         this.studentID = studentID;
         this.studentName = getStudentNameFromDatabase(studentID);
         
-        // Initialize random amounts for each account
+        // Initialize financial data
         this.amountDue = generateRandomAmountDue();
         this.currentBalance = generateRandom5DigitAmount();
         
+        // Initialize UI components and layout
         initializeComponents();
-        setupLayout(PortalUtils.createHomeSublist());
+        setupMainLayout();
+        
+        // Load initial data
         loadAnnouncements();
         loadStudentStatus();
+        
+        // Set default view to Home
+        showHomeContent();
     }
 
     /**
@@ -326,14 +347,58 @@ public class ISLUStudentPortal extends JFrame {
             buttonPanel.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
+                    // Show the corresponding panel using card layout
                     mainCardLayout.show(mainCardHolder, option.getName());
-                    showContent(option);
+                    currentMenuItem = option;
+                    
+                    // Update button appearance to show selection
+                    updateSidebarButtonSelection(buttonPanel);
+                }
+                
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    buttonPanel.setBackground(new Color(25, 55, 95)); // Lighter blue on hover
+                    buttonPanel.repaint();
+                }
+                
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (currentMenuItem == null || !currentMenuItem.getName().equals(option.getName())) {
+                        buttonPanel.setBackground(new Color(13, 37, 73)); // Original color
+                        buttonPanel.repaint();
+                    }
                 }
             });
         }
         sidebar.add(mainSideButtonPanel, BorderLayout.WEST);
 
         return sidebar;
+    }
+    
+    /**
+     * Updates sidebar button selection appearance
+     */
+    private void updateSidebarButtonSelection(JPanel selectedButton) {
+        // Reset all buttons to default color
+        Component[] components = sidebarPanel.getComponents();
+        for (Component comp : components) {
+            if (comp instanceof JPanel) {
+                JPanel panel = (JPanel) comp;
+                if (panel.getLayout() instanceof GridLayout) {
+                    Component[] buttons = panel.getComponents();
+                    for (Component button : buttons) {
+                        if (button instanceof JPanel) {
+                            button.setBackground(new Color(13, 37, 73));
+                            button.repaint();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Highlight selected button
+        selectedButton.setBackground(new Color(70, 130, 180));
+        selectedButton.repaint();
     }
 
     private static JPanel getButtonPanel(MenuItem text) {
@@ -366,27 +431,115 @@ public class ISLUStudentPortal extends JFrame {
         return buttonPanel;
     }
 
-    private void setupLayout(MySinglyLinkedList<String> subItem) {
-        // Clear current content to ensure consistent layout
-        contentPanel.removeAll();
+    /**
+     * Sets up the main layout with card system for different content views
+     */
+    private void setupMainLayout() {
+        // Initialize card layout for main content
+        mainCardLayout = new CardLayout();
+        mainCardHolder = new JPanel(mainCardLayout);
         
-        // Create announcements panel
-        JPanel announcementsPanel = createAnnouncementsPanel(subItem);
-        loadAnnouncements();
-        // Create student status panel
-        JPanel statusPanel = createStatusPanel(subItem);
-        loadStudentStatus();
-
-        contentPanel.add(announcementsPanel);
-        contentPanel.add(statusPanel);
+        // Create content panels for each menu item
+        createAllContentPanels();
+        
+        // Replace the content panel with card holder
+        JPanel mainContentPanel = new JPanel(new BorderLayout());
+        mainContentPanel.add(mainCardHolder, BorderLayout.CENTER);
+        mainContentPanel.add(footbarPanel, BorderLayout.SOUTH);
+        
+        // Update main panel layout
+        mainPanel.removeAll();
+        mainPanel.add(createHeader(), BorderLayout.NORTH);
+        mainPanel.add(sidebarPanel, BorderLayout.WEST);
+        mainPanel.add(mainContentPanel, BorderLayout.CENTER);
         
         // Refresh the display
-        contentPanel.revalidate();
-        contentPanel.repaint();
+        mainPanel.revalidate();
+        mainPanel.repaint();
+    }
+    
+    /**
+     * Creates all content panels and adds them to the card layout
+     */
+    private void createAllContentPanels() {
+        // Home panel
+        JPanel homePanel = createHomePanel();
+        mainCardHolder.add(homePanel, "🏠 Home");
+        
+        // Schedule panel
+        JPanel schedulePanel = createSchedulePanel();
+        mainCardHolder.add(schedulePanel, "📅 Schedule");
+        
+        // Attendance panel
+        JPanel attendancePanel = createAttendancePanel();
+        mainCardHolder.add(attendancePanel, "📌 Attendance");
+        
+        // Statement of Accounts panel
+        JPanel soaPanel = createStatementOfAccountsPanel();
+        mainCardHolder.add(soaPanel, "🧮 Statement of Accounts");
+        
+        // Grades panel
+        JPanel gradesPanel = createGradesPanel();
+        mainCardHolder.add(gradesPanel, "📊 Grades");
+        
+        // Transcript panel
+        JPanel transcriptPanel = createTranscriptPanel();
+        mainCardHolder.add(transcriptPanel, "📋 Transcript of Records");
+        
+        // Curriculum Checklist panel
+        JPanel curriculumPanel = createCurriculumPanel();
+        mainCardHolder.add(curriculumPanel, "✅ Curriculum Checklist");
+        
+        // Medical Record panel
+        JPanel medicalPanel = createMedicalPanel();
+        mainCardHolder.add(medicalPanel, "🏥 Medical Record");
+        
+        // Personal Details panel
+        JPanel personalPanel = createPersonalDetailsPanel();
+        mainCardHolder.add(personalPanel, "👤 Personal Details");
+        
+        // Journal/Periodical panel
+        JPanel journalPanel = createJournalPanel();
+        mainCardHolder.add(journalPanel, "📚 Journal/Periodical");
+        
+        // Downloadables/About panel
+        JPanel downloadablesPanel = createDownloadablesPanel();
+        mainCardHolder.add(downloadablesPanel, "ℹ️ Downloadable/ About iSLU");
+    }
+    
+    /**
+     * Shows the home content (default view)
+     */
+    private void showHomeContent() {
+        mainCardLayout.show(mainCardHolder, "🏠 Home");
+        currentMenuItem = new MenuItem("🏠 Home", PortalUtils.createHomeSublist());
+    }
+    
+    /**
+     * Creates the Home panel with announcements and student status
+     */
+    private JPanel createHomePanel() {
+        JPanel panel = new JPanel(new GridLayout(1, 2, 10, 10));
+        panel.setBorder(new EmptyBorder(20, 20, 20, 20));
+        panel.setBackground(Color.WHITE);
+        
+        // Create announcements panel
+        MySinglyLinkedList<String> homeSublist = PortalUtils.createHomeSublist();
+        JPanel announcementsPanel = createAnnouncementsPanel(homeSublist);
+        
+        // Create student status panel
+        JPanel statusPanel = createStatusPanel(homeSublist);
+        
+        panel.add(announcementsPanel);
+        panel.add(statusPanel);
+        
+        return panel;
     }
 
-    // Method for the "Grade" sub-panels
-    private JPanel createGradesPanel(MySinglyLinkedList<String> subItems) {
+    /**
+     * Creates the Grades panel with current semester grades
+     */
+    private JPanel createGradesPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
 
@@ -461,12 +614,669 @@ public class ISLUStudentPortal extends JFrame {
     }
     
     /**
+     * Creates the Schedule panel showing class schedules
+     */
+    private JPanel createSchedulePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel titleLabel = new JLabel("Class Schedule - " + semester);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        JButton refreshButton = new JButton("Refresh");
+        refreshButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        refreshButton.addActionListener(e -> refreshSchedule());
+        headerPanel.add(refreshButton, BorderLayout.EAST);
+        
+        panel.add(headerPanel, BorderLayout.NORTH);
+        
+        // Load schedule data from backend
+        List<CourseSchedule> schedules = DataManager.getStudentSchedule(studentID);
+        
+        String[] columnNames = {"Class Code", "Course", "Units", "Time", "Days", "Room", "Instructor"};
+        
+        // Convert schedule data to table format
+        Object[][] data;
+        if (schedules.isEmpty()) {
+            data = new Object[][]{{"No schedule available", "-", "-", "-", "-", "-", "-"}};
+        } else {
+            data = new Object[schedules.size()][];
+            for (int i = 0; i < schedules.size(); i++) {
+                CourseSchedule schedule = schedules.get(i);
+                data[i] = new Object[]{
+                    schedule.getClassCode(),
+                    schedule.getCourseDescription(),
+                    schedule.getUnits(),
+                    schedule.getStartTime() + " - " + schedule.getEndTime(),
+                    schedule.getDays(),
+                    schedule.getRoom(),
+                    schedule.getInstructor()
+                };
+            }
+        }
+        
+        DefaultTableModel tableModel = new DefaultTableModel(data, columnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        JTable table = new JTable(tableModel);
+        table.setRowHeight(25);
+        table.setFillsViewportHeight(true);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.setFont(new Font("Arial", Font.PLAIN, 12));
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(new Color(230, 240, 255));
+        
+        // Auto-resize columns
+        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Footer with information
+        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        footerPanel.setBackground(Color.WHITE);
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel footerLabel = new JLabel("Note: Schedule changes are updated by the Registrar's Office.");
+        footerLabel.setFont(new Font("Arial", Font.ITALIC, 10));
+        footerLabel.setForeground(Color.GRAY);
+        footerPanel.add(footerLabel);
+        
+        panel.add(footerPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
      * Refreshes grade data
      */
     private void refreshGrades() {
-        // Refresh the grades content
-        showContent(new MenuItem("📊 Grades", PortalUtils.createGradeSubList()));
+        createAllContentPanels();
+        mainCardLayout.show(mainCardHolder, "📊 Grades");
         JOptionPane.showMessageDialog(this, "Grades data refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Creates the Attendance panel showing attendance records
+     */
+    private JPanel createAttendancePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel titleLabel = new JLabel("Attendance Records - " + semester);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        JButton refreshButton = new JButton("Refresh");
+        refreshButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        refreshButton.addActionListener(e -> refreshAttendance());
+        headerPanel.add(refreshButton, BorderLayout.EAST);
+        
+        panel.add(headerPanel, BorderLayout.NORTH);
+        
+        // Load attendance data from backend
+        List<AttendanceRecord> attendanceRecords = DataManager.getStudentAttendance(studentID);
+        
+        String[] columnNames = {"Subject Code", "Subject Name", "Date", "Status", "Remarks"};
+        
+        // Convert attendance data to table format
+        Object[][] data;
+        if (attendanceRecords.isEmpty()) {
+            data = new Object[][]{{"No attendance records available", "-", "-", "-", "-"}};
+        } else {
+            data = new Object[attendanceRecords.size()][];
+            for (int i = 0; i < attendanceRecords.size(); i++) {
+                AttendanceRecord record = attendanceRecords.get(i);
+                data[i] = new Object[]{
+                    record.getSubjectCode(),
+                    record.getSubjectName(),
+                    record.getDate(),
+                    record.getStatus(),
+                    record.getRemarks()
+                };
+            }
+        }
+        
+        DefaultTableModel tableModel = new DefaultTableModel(data, columnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        JTable table = new JTable(tableModel);
+        table.setRowHeight(25);
+        table.setFillsViewportHeight(true);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.setFont(new Font("Arial", Font.PLAIN, 12));
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(new Color(230, 240, 255));
+        
+        // Color code attendance status
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                         boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                if (column == 3 && value != null) { // Status column
+                    String status = value.toString();
+                    if (status.equals("Present")) {
+                        c.setForeground(new Color(0, 128, 0)); // Green
+                    } else if (status.equals("Absent")) {
+                        c.setForeground(new Color(255, 0, 0)); // Red
+                    } else if (status.equals("Late")) {
+                        c.setForeground(new Color(255, 140, 0)); // Orange
+                    } else {
+                        c.setForeground(Color.BLACK);
+                    }
+                } else {
+                    c.setForeground(Color.BLACK);
+                }
+                
+                return c;
+            }
+        });
+        
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Summary panel
+        JPanel summaryPanel = createAttendanceSummary();
+        panel.add(summaryPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates attendance summary panel
+     */
+    private JPanel createAttendanceSummary() {
+        JPanel summaryPanel = new JPanel(new GridLayout(1, 4, 10, 10));
+        summaryPanel.setBackground(Color.WHITE);
+        summaryPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        // Get attendance summary
+        AttendanceSummary summary = DataManager.getAttendanceSummaryForStudent(studentID);
+        
+        // Present count
+        JPanel presentPanel = createSummaryCard("Present", String.valueOf(summary.getPresentCount()), new Color(0, 128, 0));
+        summaryPanel.add(presentPanel);
+        
+        // Absent count
+        JPanel absentPanel = createSummaryCard("Absent", String.valueOf(summary.getAbsentCount()), new Color(255, 0, 0));
+        summaryPanel.add(absentPanel);
+        
+        // Late count
+        JPanel latePanel = createSummaryCard("Late", String.valueOf(summary.getLateCount()), new Color(255, 140, 0));
+        summaryPanel.add(latePanel);
+        
+        // Attendance percentage
+        double percentage = summary.getAttendancePercentage();
+        JPanel percentagePanel = createSummaryCard("Attendance %", String.format("%.1f%%", percentage), 
+                                                 percentage >= 75 ? new Color(0, 128, 0) : new Color(255, 0, 0));
+        summaryPanel.add(percentagePanel);
+        
+        return summaryPanel;
+    }
+    
+    /**
+     * Creates a summary card for attendance statistics
+     */
+    private JPanel createSummaryCard(String title, String value, Color color) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(color, 2),
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+        
+        JLabel titleLabel = new JLabel(title, SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        titleLabel.setForeground(color);
+        
+        JLabel valueLabel = new JLabel(value, SwingConstants.CENTER);
+        valueLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        valueLabel.setForeground(color);
+        
+        card.add(titleLabel, BorderLayout.NORTH);
+        card.add(valueLabel, BorderLayout.CENTER);
+        
+        return card;
+    }
+    
+    /**
+     * Refreshes schedule data
+     */
+    private void refreshSchedule() {
+        createAllContentPanels();
+        mainCardLayout.show(mainCardHolder, "📅 Schedule");
+        JOptionPane.showMessageDialog(this, "Schedule data refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Creates the Statement of Accounts panel showing financial information
+     */
+    private JPanel createStatementOfAccountsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel titleLabel = new JLabel("Statement of Accounts - " + semester);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        JButton refreshButton = new JButton("Refresh");
+        refreshButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        refreshButton.addActionListener(e -> refreshStatementOfAccounts());
+        headerPanel.add(refreshButton, BorderLayout.EAST);
+        
+        panel.add(headerPanel, BorderLayout.NORTH);
+        
+        // Account summary panel
+        JPanel summaryPanel = createAccountSummary();
+        panel.add(summaryPanel, BorderLayout.NORTH);
+        
+        // Payment transactions table
+        JPanel transactionsPanel = createPaymentTransactionsPanel();
+        panel.add(transactionsPanel, BorderLayout.CENTER);
+        
+        // Payment options panel
+        JPanel paymentPanel = createPaymentOptionsPanel();
+        panel.add(paymentPanel, BorderLayout.SOUTH);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates account summary panel
+     */
+    private JPanel createAccountSummary() {
+        JPanel summaryPanel = new JPanel(new GridLayout(1, 3, 10, 10));
+        summaryPanel.setBackground(Color.WHITE);
+        summaryPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        // Current Balance
+        JPanel balancePanel = createFinancialCard("Current Balance", 
+                                                String.format("₱ %.2f", currentBalance), 
+                                                new Color(0, 128, 0));
+        summaryPanel.add(balancePanel);
+        
+        // Amount Due
+        JPanel duePanel = createFinancialCard("Amount Due", 
+                                            String.format("₱ %.2f", amountDue), 
+                                            amountDue > 0 ? new Color(255, 0, 0) : new Color(0, 128, 0));
+        summaryPanel.add(duePanel);
+        
+        // Account Status
+        String status = amountDue > 0 ? "Outstanding Balance" : "Account in Good Standing";
+        Color statusColor = amountDue > 0 ? new Color(255, 0, 0) : new Color(0, 128, 0);
+        JPanel statusPanel = createFinancialCard("Account Status", status, statusColor);
+        summaryPanel.add(statusPanel);
+        
+        return summaryPanel;
+    }
+    
+    /**
+     * Creates a financial summary card
+     */
+    private JPanel createFinancialCard(String title, String value, Color color) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(color, 2),
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
+        
+        JLabel titleLabel = new JLabel(title, SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        titleLabel.setForeground(color);
+        
+        JLabel valueLabel = new JLabel(value, SwingConstants.CENTER);
+        valueLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        valueLabel.setForeground(color);
+        
+        card.add(titleLabel, BorderLayout.NORTH);
+        card.add(valueLabel, BorderLayout.CENTER);
+        
+        return card;
+    }
+    
+    /**
+     * Creates payment transactions panel
+     */
+    private JPanel createPaymentTransactionsPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel transactionsLabel = new JLabel("Recent Payment Transactions");
+        transactionsLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        transactionsLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        panel.add(transactionsLabel, BorderLayout.NORTH);
+        
+        // Load payment transactions from backend
+        List<PaymentTransaction> transactions = DataManager.getPaymentTransactions(studentID);
+        
+        String[] columnNames = {"Date", "Payment Channel", "Reference", "Amount", "Status"};
+        
+        // Convert transaction data to table format
+        Object[][] data;
+        if (transactions.isEmpty()) {
+            data = new Object[][]{{"No payment transactions found", "-", "-", "-", "-"}};
+        } else {
+            data = new Object[transactions.size()][];
+            for (int i = 0; i < transactions.size(); i++) {
+                PaymentTransaction transaction = transactions.get(i);
+                data[i] = new Object[]{
+                    transaction.getDate(),
+                    transaction.getPaymentChannel(),
+                    transaction.getReference(),
+                    String.format("₱ %.2f", transaction.getAmount()),
+                    "Completed"
+                };
+            }
+        }
+        
+        DefaultTableModel tableModel = new DefaultTableModel(data, columnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        JTable table = new JTable(tableModel);
+        table.setRowHeight(25);
+        table.setFillsViewportHeight(true);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.setFont(new Font("Arial", Font.PLAIN, 12));
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(new Color(230, 240, 255));
+        
+        JScrollPane scrollPane = new JScrollPane(table);
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    /**
+     * Creates payment options panel
+     */
+    private JPanel createPaymentOptionsPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JButton makePaymentButton = new JButton("Make Payment");
+        makePaymentButton.setFont(new Font("Arial", Font.BOLD, 14));
+        makePaymentButton.setBackground(new Color(70, 130, 180));
+        makePaymentButton.setForeground(Color.WHITE);
+        makePaymentButton.setFocusPainted(false);
+        makePaymentButton.addActionListener(e -> showPaymentDialog());
+        
+        JButton downloadStatementButton = new JButton("Download Statement");
+        downloadStatementButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        downloadStatementButton.setBackground(new Color(108, 117, 125));
+        downloadStatementButton.setForeground(Color.WHITE);
+        downloadStatementButton.setFocusPainted(false);
+        downloadStatementButton.addActionListener(e -> downloadStatement());
+        
+        panel.add(makePaymentButton);
+        panel.add(Box.createHorizontalStrut(10));
+        panel.add(downloadStatementButton);
+        
+        return panel;
+    }
+    
+    /**
+     * Shows payment dialog
+     */
+    private void showPaymentDialog() {
+        if (amountDue <= 0) {
+            JOptionPane.showMessageDialog(this, 
+                "No outstanding balance. Your account is in good standing!", 
+                "Payment Information", 
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        String[] paymentOptions = {"UnionBank UPay Online", "GCash", "PayMaya", "Bank Transfer", "Over-the-Counter"};
+        String selectedOption = (String) JOptionPane.showInputDialog(this,
+                "Select payment method for ₱ " + String.format("%.2f", amountDue),
+                "Make Payment",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                paymentOptions,
+                paymentOptions[0]);
+        
+        if (selectedOption != null) {
+            JOptionPane.showMessageDialog(this,
+                "Payment initiated via " + selectedOption + "\n" +
+                "Amount: ₱ " + String.format("%.2f", amountDue) + "\n" +
+                "Please complete the payment process through the selected channel.",
+                "Payment Initiated",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+    
+    /**
+     * Downloads statement
+     */
+    private void downloadStatement() {
+        JOptionPane.showMessageDialog(this,
+            "Statement of Accounts downloaded to your Downloads folder.\n" +
+            "Filename: SOA_" + studentID + "_" + semester.replace(" ", "_") + ".pdf",
+            "Download Complete",
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Refreshes attendance data
+     */
+    private void refreshAttendance() {
+        createAllContentPanels();
+        mainCardLayout.show(mainCardHolder, "📌 Attendance");
+        JOptionPane.showMessageDialog(this, "Attendance data refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Refreshes statement of accounts data
+     */
+    private void refreshStatementOfAccounts() {
+        // Regenerate random amounts to simulate account updates
+        this.amountDue = generateRandomAmountDue();
+        this.currentBalance = generateRandom5DigitAmount();
+        
+        createAllContentPanels();
+        mainCardLayout.show(mainCardHolder, "🧮 Statement of Accounts");
+        JOptionPane.showMessageDialog(this, "Account data refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Creates the Transcript of Records panel
+     */
+    private JPanel createTranscriptPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(Color.WHITE);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        JLabel titleLabel = new JLabel("Transcript of Records - " + studentName);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        headerPanel.add(titleLabel, BorderLayout.CENTER);
+        
+        JButton downloadButton = new JButton("Download PDF");
+        downloadButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        downloadButton.addActionListener(e -> downloadTranscript());
+        headerPanel.add(downloadButton, BorderLayout.EAST);
+        
+        panel.add(headerPanel, BorderLayout.NORTH);
+        
+        // Generate transcript data from backend
+        Object[][] transcriptData = generateTranscriptDataFromBackend();
+        String[] columnNames = {"Course Code", "Course Description", "Final Grade", "Units"};
+        
+        DefaultTableModel tableModel = new DefaultTableModel(transcriptData, columnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        JTable table = new JTable(tableModel);
+        table.setRowHeight(25);
+        table.setFillsViewportHeight(true);
+        table.getTableHeader().setReorderingAllowed(false);
+        table.setFont(new Font("Arial", Font.PLAIN, 12));
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(new Color(230, 240, 255));
+        
+        // Custom renderer for semester headers
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                         boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                
+                // Check if this is a semester header row
+                if (column == 0 && value != null && value.toString().contains("SEMESTER")) {
+                    c.setFont(new Font("Arial", Font.BOLD, 14));
+                    c.setBackground(new Color(240, 240, 240));
+                    setHorizontalAlignment(SwingConstants.CENTER);
+                } else {
+                    c.setFont(new Font("Arial", Font.PLAIN, 12));
+                    c.setBackground(Color.WHITE);
+                    setHorizontalAlignment(SwingConstants.LEFT);
+                }
+                
+                return c;
+            }
+        });
+        
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        
+        panel.add(scrollPane, BorderLayout.CENTER);
+        
+        return panel;
+    }
+    
+    /**
+     * Downloads transcript
+     */
+    private void downloadTranscript() {
+        JOptionPane.showMessageDialog(this,
+            "Transcript of Records downloaded to your Downloads folder.\n" +
+            "Filename: TOR_" + studentID + "_" + studentName.replace(" ", "_") + ".pdf",
+            "Download Complete",
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    /**
+     * Creates placeholder panels for remaining menu items
+     */
+    private JPanel createCurriculumPanel() {
+        return createPlaceholderPanel("Curriculum Checklist", 
+            "Track your academic progress and course requirements.\n" +
+            "View completed courses, remaining requirements, and graduation status.");
+    }
+    
+    private JPanel createMedicalPanel() {
+        return createPlaceholderPanel("Medical Record", 
+            "View your medical examination records and health clearance status.\n" +
+            "Access medical certificates and health requirements.");
+    }
+    
+    private JPanel createPersonalDetailsPanel() {
+        return createPlaceholderPanel("Personal Details", 
+            "View and update your personal information.\n" +
+            "Manage contact details, emergency contacts, and personal data.");
+    }
+    
+    private JPanel createJournalPanel() {
+        return createPlaceholderPanel("Journal/Periodical", 
+            "Access academic journals, research papers, and periodicals.\n" +
+            "Browse library resources and academic publications.");
+    }
+    
+    private JPanel createDownloadablesPanel() {
+        return createPlaceholderPanel("Downloadables / About iSLU", 
+            "Download important forms, documents, and resources.\n" +
+            "Learn more about iSLU history, mission, and vision.");
+    }
+    
+    /**
+     * Creates a placeholder panel for features not yet implemented
+     */
+    private JPanel createPlaceholderPanel(String title, String description) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
+        
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(Color.WHITE);
+        
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        titleLabel.setForeground(new Color(70, 130, 180));
+        
+        JTextArea descriptionArea = new JTextArea(description);
+        descriptionArea.setFont(new Font("Arial", Font.PLAIN, 16));
+        descriptionArea.setEditable(false);
+        descriptionArea.setOpaque(false);
+        descriptionArea.setWrapStyleWord(true);
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setAlignmentX(Component.CENTER_ALIGNMENT);
+        descriptionArea.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+        
+        JLabel comingSoonLabel = new JLabel("Coming Soon!");
+        comingSoonLabel.setFont(new Font("Arial", Font.ITALIC, 14));
+        comingSoonLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        comingSoonLabel.setForeground(Color.GRAY);
+        
+        contentPanel.add(titleLabel);
+        contentPanel.add(descriptionArea);
+        contentPanel.add(comingSoonLabel);
+        
+        panel.add(contentPanel, BorderLayout.CENTER);
+        
+        return panel;
     }
 
     // Method for the Announcements sub-panels
@@ -574,49 +1384,7 @@ public class ISLUStudentPortal extends JFrame {
         statusArea.setCaretPosition(0);
     }
 
-    // method for showing different contents
-    private void showContent(MenuItem item) {
-// Clear current content
-        contentPanel.removeAll();
-        switch (item.getName()) {
-            case "🏠 Home":
-                setupLayout(item.getSubItems());
-                break;
-            case "📚 Journal/Periodical":
-                contentPanel.add(createJournalPeriodicalPanel(item.getSubItems()));
-                break;
-            case "📅 Schedule":
-                contentPanel.add(showScheduleContent(item.getSubItems()));
-                break;
-            case "📌 Attendance":
-                contentPanel.add(showAttendanceContent(item.getSubItems()));
-                break;
-            case "📊 Grades":
-                contentPanel.add(createGradesPanel(item.getSubItems()));
-                break;
-            case "👤 Personal Details":
-                showPersonalDetailsContent(item.getSubItems());
-                break;
-            case "🧮 Statement of Accounts":
-                contentPanel.add(createStatementOfAccountsPanel(item.getSubItems()));
-                break;
-            case "📋 Transcript of Records":
-                contentPanel.add(createTranscriptOfRecordsPanel(item.getSubItems()));
-                break;
-            case "✅ Curriculum Checklist":
-                contentPanel.add(createCurriculumChecklistPanel(item.getSubItems()));
-                break;
-            case "ℹ️ Downloadable/ About iSLU":
-                contentPanel.add(createAboutISLUPanel(item.getSubItems()));
-                break;
-            default:
-                // Fallback for any other menu item with a sublist
-                showGenericContent(item.getName());
-        }
-        contentPanel.revalidate();
-        contentPanel.repaint();
-
-    }
+    // Old showContent method removed - now using card layout system
     // Journal/Periodical Panel
     private JPanel createJournalPeriodicalPanel(MySinglyLinkedList<String> subItems) {
         JPanel mainPanel = new JPanel(new BorderLayout());
@@ -1096,7 +1864,7 @@ public class ISLUStudentPortal extends JFrame {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 // Navigate back to home
-                showContent(new MenuItem("🏠 Home", new MySinglyLinkedList<>()));
+                mainCardLayout.show(mainCardHolder, "🏠 Home");
             }
         });
         contentPanel.add(clickLabel, gbc);
@@ -1439,7 +2207,7 @@ public class ISLUStudentPortal extends JFrame {
                 dialog.dispose();
                 
                 // Refresh the attendance view
-                showContent(new MenuItem("📌 Attendance", PortalUtils.createAttendanceSubList()));
+                mainCardLayout.show(mainCardHolder, "📌 Attendance");
             }
         });
         
@@ -1506,7 +2274,7 @@ public class ISLUStudentPortal extends JFrame {
      */
     private void refreshAttendanceData() {
         // Refresh the attendance content
-        showContent(new MenuItem("📌 Attendance", PortalUtils.createAttendanceSubList()));
+        mainCardLayout.show(mainCardHolder, "📌 Attendance");
         JOptionPane.showMessageDialog(this, "Attendance data refreshed!", "Refresh", JOptionPane.INFORMATION_MESSAGE);
     }
     // method for Personal Details Content
@@ -2822,8 +3590,7 @@ public class ISLUStudentPortal extends JFrame {
     }
 
     // Fields to track payment information
-    private double currentBalance; // Current overpayment amount (randomized)
-    private double amountDue; // Current amount due (randomized)
+    // Financial variables already declared at class level
     private JLabel overpaymentValueLabel; // Reference to update the display
     private JLabel amountDueValueLabel; // Reference to update the amount due display
     private JLabel prelimStatusLabel; // Reference to update the PRELIM STATUS display
@@ -3088,9 +3855,9 @@ public class ISLUStudentPortal extends JFrame {
     }
 
     /**
-     * Refreshes the Statement of Accounts display with updated balance
+     * Duplicate method removed - using the one defined earlier in the class
      */
-    private void refreshStatementOfAccounts() {
+    private void refreshStatementOfAccountsDuplicate() {
         // Update the amount due value label if it exists
         if (amountDueValueLabel != null) {
             amountDueValueLabel.setText("P " + String.format("%.2f", amountDue));
