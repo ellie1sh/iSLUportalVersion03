@@ -7,6 +7,7 @@ import java.awt.event.MouseEvent;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -720,8 +721,8 @@ public class ISLUStudentPortal extends JFrame {
         minStart = roundDownToHalfHour(minStart);
         maxEnd = roundUpToHalfHour(maxEnd);
 
-        // Column names from subItems
-        String[] columnNames = {"","Time", "Monday","Tuesday","Wednesday","Thursday","Friday"};
+        // Column names aligned with data columns
+        String[] columnNames = {"Time", "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"};
 
         // Build data rows
         List<Object[]> rows = new ArrayList<>();
