@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import javax.swing.Timer;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalTime;
@@ -1028,75 +1029,472 @@ public class ISLUStudentPortal extends JFrame {
     }
     // method for attendance Content
     private Component showAttendanceContent(MySinglyLinkedList<String> subItems) {
-        JPanel attendancePanel = new JPanel(new BorderLayout());
-        attendancePanel.setBorder(BorderFactory.createTitledBorder("Attendance Records"));
-
-        // Header panel with info and refresh button
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(Color.WHITE);
         
-        JLabel infoLabel = new JLabel("Your attendance records for the current semester");
-        infoLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        headerPanel.add(infoLabel, BorderLayout.WEST);
+        // Load attendance records
+        java.util.List<AttendanceRecord> records = DataManager.loadAttendanceRecords(studentID);
+        java.util.List<AttendanceRecord> absentTardyRecords = new java.util.ArrayList<>();
         
-        JButton refreshButton = new JButton("Refresh");
-        refreshButton.addActionListener(e -> refreshAttendanceData());
-        headerPanel.add(refreshButton, BorderLayout.EAST);
-        
-        attendancePanel.add(headerPanel, BorderLayout.NORTH);
-
-        String[] columnNames = {"Subject", "Present", "Absent", "Late", "Percentage"};
-        
-        // Load attendance data from backend
-        java.util.Map<String, AttendanceSummary> attendanceSummary = DataManager.getAttendanceSummary(studentID);
-        java.util.List<Object[]> dataList = new java.util.ArrayList<>();
-        
-        for (AttendanceSummary summary : attendanceSummary.values()) {
-            dataList.add(summary.toTableRow());
-        }
-        
-        // If no data found, show a message
-        if (dataList.isEmpty()) {
-            dataList.add(new Object[]{"No attendance records found", "-", "-", "-", "-"});
-        }
-        
-        Object[][] data = dataList.toArray(new Object[dataList.size()][]);
-
-        DefaultTableModel attendanceModel = new DefaultTableModel(data, columnNames) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false; // Make all cells non-editable
+        // Filter for absent and tardy records only
+        for (AttendanceRecord record : records) {
+            if ("Absent".equals(record.getStatus()) || "Late".equals(record.getStatus())) {
+                absentTardyRecords.add(record);
             }
-        };
-        JTable attendanceTable = new JTable(attendanceModel);
-        attendanceTable.setRowHeight(25);
-        attendanceTable.getTableHeader().setReorderingAllowed(false); // Disable column reordering
-        attendanceTable.setAutoCreateRowSorter(false); // Disable sorting
+        }
         
-        // Style the table
-        attendanceTable.setFont(new Font("Arial", Font.PLAIN, 12));
-        attendanceTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
-        attendanceTable.setGridColor(new Color(220, 220, 220));
-        attendanceTable.setSelectionBackground(new Color(230, 240, 255));
+        if (absentTardyRecords.isEmpty()) {
+            // Show success message when no absences/tardiness found
+            return createNoAbsencesPanel();
+        } else {
+            // Show detailed attendance records with readmission section
+            return createDetailedAttendancePanel(absentTardyRecords);
+        }
+    }
+    
+    /**
+     * Creates the panel shown when student has no absences or tardiness
+     */
+    private JPanel createNoAbsencesPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(Color.WHITE);
         
-        JScrollPane scrollPane = new JScrollPane(attendanceTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        attendancePanel.add(scrollPane, BorderLayout.CENTER);
+        // Main content panel
+        JPanel contentPanel = new JPanel(new GridBagLayout());
+        contentPanel.setBackground(Color.WHITE);
         
-        // Footer with faculty update info
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(50, 50, 20, 50);
+        
+        // Great! with thumbs up emoji
+        JLabel greatLabel = new JLabel("Great! 👍");
+        greatLabel.setFont(new Font("Arial", Font.BOLD, 48));
+        greatLabel.setForeground(new Color(100, 100, 100));
+        greatLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        contentPanel.add(greatLabel, gbc);
+        
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 50, 30, 50);
+        
+        JLabel messageLabel = new JLabel("No Absences/Tardiness were found.");
+        messageLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+        messageLabel.setForeground(new Color(100, 100, 100));
+        messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        contentPanel.add(messageLabel, gbc);
+        
+        gbc.gridy = 2;
+        gbc.insets = new Insets(0, 50, 50, 50);
+        
+        JLabel clickLabel = new JLabel("<html><u style='color: blue;'>click here to go back home</u></html>");
+        clickLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        clickLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        clickLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        clickLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                // Navigate back to home
+                showContent(new MenuItem("🏠 Home", new MySinglyLinkedList<>()));
+            }
+        });
+        contentPanel.add(clickLabel, gbc);
+        
+        panel.add(contentPanel, BorderLayout.CENTER);
+        
+        // Footer
         JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        footerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        JLabel footerLabel = new JLabel("Note: Attendance records are updated by faculty members");
-        footerLabel.setFont(new Font("Arial", Font.ITALIC, 10));
+        footerPanel.setBackground(Color.WHITE);
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
+        
+        JLabel footerLabel = new JLabel("Copyright © 2025 Saint Louis University Inc. All rights reserved.");
+        footerLabel.setFont(new Font("Arial", Font.PLAIN, 11));
         footerLabel.setForeground(Color.GRAY);
         footerPanel.add(footerLabel);
         
-        attendancePanel.add(footerPanel, BorderLayout.SOUTH);
+        panel.add(footerPanel, BorderLayout.SOUTH);
         
-        return attendancePanel;
+        return panel;
     }
     
+    /**
+     * Creates the detailed attendance panel showing absent/tardy records by subject
+     */
+    private JPanel createDetailedAttendancePanel(java.util.List<AttendanceRecord> absentTardyRecords) {
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(Color.WHITE);
+        
+        // Main scroll pane for the content
+        JPanel contentPanel = new JPanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        
+        // Add readmission records section first
+        contentPanel.add(createReadmissionRecordsSection(absentTardyRecords));
+        contentPanel.add(Box.createVerticalStrut(20));
+        
+        // Group records by subject
+        java.util.Map<String, java.util.List<AttendanceRecord>> recordsBySubject = new java.util.LinkedHashMap<>();
+        for (AttendanceRecord record : absentTardyRecords) {
+            String key = record.getSubjectCode() + " - " + record.getSubjectName();
+            recordsBySubject.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(record);
+        }
+        
+        // Create a panel for each subject
+        for (java.util.Map.Entry<String, java.util.List<AttendanceRecord>> entry : recordsBySubject.entrySet()) {
+            contentPanel.add(createSubjectAttendancePanel(entry.getKey(), entry.getValue()));
+            contentPanel.add(Box.createVerticalStrut(20));
+        }
+        
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        
+        return mainPanel;
+    }
+    
+    /**
+     * Creates the readmission records section
+     */
+    private JPanel createReadmissionRecordsSection(java.util.List<AttendanceRecord> absentTardyRecords) {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(52, 73, 94));
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        
+        JLabel headerLabel = new JLabel("📋 READMISSION RECORDS");
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        headerLabel.setForeground(Color.WHITE);
+        panel.add(headerLabel, BorderLayout.WEST);
+        
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        
+        // Check for excused absences (those with medical-related remarks)
+        java.util.List<AttendanceRecord> excusedRecords = new java.util.ArrayList<>();
+        for (AttendanceRecord record : absentTardyRecords) {
+            if ("Absent".equals(record.getStatus()) && record.getRemarks() != null && 
+                (record.getRemarks().toLowerCase().contains("sick") || 
+                 record.getRemarks().toLowerCase().contains("medical") ||
+                 record.getRemarks().toLowerCase().contains("doctor") ||
+                 record.getRemarks().toLowerCase().contains("gastro"))) {
+                excusedRecords.add(record);
+            }
+        }
+        
+        if (excusedRecords.isEmpty()) {
+            JLabel noRecordsLabel = new JLabel("No readmission records found.");
+            noRecordsLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+            noRecordsLabel.setForeground(Color.GRAY);
+            contentPanel.add(noRecordsLabel, BorderLayout.CENTER);
+        } else {
+            // Create table for readmission records
+            String[] columnNames = {"Date Readmitted", "Date Absent", "Status", "Reason / Detail", "Remarks"};
+            Object[][] data = new Object[excusedRecords.size()][];
+            
+            for (int i = 0; i < excusedRecords.size(); i++) {
+                AttendanceRecord record = excusedRecords.get(i);
+                data[i] = new Object[]{
+                    record.getDate().format(java.time.format.DateTimeFormatter.ofPattern("MMM-dd-yyyy")),
+                    record.getDate().format(java.time.format.DateTimeFormatter.ofPattern("MMM-dd-yyyy")),
+                    "Excused",
+                    "SICKNESS - LBM/ STOMACH ACHE/ACUTE GASTROENTERITIS",
+                    "W/ MEDCERT ACUTE GASTRO, ALL SUBJECTS"
+                };
+            }
+            
+            DefaultTableModel model = new DefaultTableModel(data, columnNames) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+            
+            JTable table = new JTable(model);
+            table.setFont(new Font("Arial", Font.PLAIN, 12));
+            table.setRowHeight(25);
+            table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+            table.setGridColor(new Color(220, 220, 220));
+            
+            JScrollPane tableScrollPane = new JScrollPane(table);
+            contentPanel.add(tableScrollPane, BorderLayout.CENTER);
+        }
+        
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(panel, BorderLayout.NORTH);
+        mainPanel.add(contentPanel, BorderLayout.CENTER);
+        
+        return mainPanel;
+    }
+    
+    /**
+     * Creates a panel for a specific subject's attendance records
+     */
+    private JPanel createSubjectAttendancePanel(String subjectInfo, java.util.List<AttendanceRecord> records) {
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(new Color(52, 73, 94));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        
+        String[] parts = subjectInfo.split(" - ");
+        String subjectCode = parts[0];
+        String subjectName = parts.length > 1 ? parts[1] : "";
+        
+        JLabel headerLabel = new JLabel("📚 " + subjectCode + " (" + subjectName + ")");
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        headerLabel.setForeground(Color.WHITE);
+        headerPanel.add(headerLabel, BorderLayout.WEST);
+        
+        // Content panel
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        
+        // Create table
+        String[] columnNames = {"Date of absence/tardy", "Date Dropped", "Date Claimed", "Remarks", "Type"};
+        Object[][] data = new Object[records.size()][];
+        
+        for (int i = 0; i < records.size(); i++) {
+            AttendanceRecord record = records.get(i);
+            data[i] = new Object[]{
+                record.getDate().format(java.time.format.DateTimeFormatter.ofPattern("MMM-dd-yyyy")),
+                "", // Date Dropped - empty for now
+                "", // Date Claimed - empty for now  
+                record.getRemarks() != null ? record.getRemarks() : "",
+                record.getStatus()
+            };
+        }
+        
+        DefaultTableModel model = new DefaultTableModel(data, columnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        JTable table = new JTable(model);
+        table.setFont(new Font("Arial", Font.PLAIN, 12));
+        table.setRowHeight(25);
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        table.setGridColor(new Color(220, 220, 220));
+        table.setSelectionBackground(new Color(230, 240, 255));
+        
+        // Add row selection listener to show reason application dialog
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                int selectedRow = table.getSelectedRow();
+                if (selectedRow >= 0) {
+                    AttendanceRecord selectedRecord = records.get(selectedRow);
+                    showReasonApplicationDialog(selectedRecord);
+                    table.clearSelection(); // Clear selection after showing dialog
+                }
+            }
+        });
+        
+        JScrollPane tableScrollPane = new JScrollPane(table);
+        contentPanel.add(tableScrollPane, BorderLayout.CENTER);
+        
+        // Add "Apply Reason" button
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        
+        JButton applyReasonButton = new JButton("✏️ Apply Reason of absence/tardy from the selected date/s");
+        applyReasonButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        applyReasonButton.setBackground(new Color(240, 240, 240));
+        applyReasonButton.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+        applyReasonButton.addActionListener(e -> {
+            int selectedRow = table.getSelectedRow();
+            if (selectedRow >= 0) {
+                AttendanceRecord selectedRecord = records.get(selectedRow);
+                showReasonApplicationDialog(selectedRecord);
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "Please select date/s of absence/tardy.", 
+                    "Oops!", 
+                    JOptionPane.WARNING_MESSAGE);
+            }
+        });
+        
+        buttonPanel.add(applyReasonButton);
+        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        mainPanel.add(contentPanel, BorderLayout.CENTER);
+        
+        return mainPanel;
+    }
+    
+    /**
+     * Shows the reason application dialog for a selected attendance record
+     */
+    private void showReasonApplicationDialog(AttendanceRecord record) {
+        JDialog dialog = new JDialog(this, "Reason/s of absences/tardiness in class: (" + record.getSubjectCode() + ")", true);
+        dialog.setSize(500, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(false);
+        
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBackground(Color.WHITE);
+        
+        // Header panel
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setBackground(new Color(52, 73, 94));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        
+        JLabel headerLabel = new JLabel("📅 Selected Date of absences/tardiness");
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        headerLabel.setForeground(Color.WHITE);
+        headerPanel.add(headerLabel, BorderLayout.WEST);
+        
+        // Date panel
+        JPanel datePanel = new JPanel(new BorderLayout());
+        datePanel.setBackground(Color.WHITE);
+        datePanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        
+        JLabel dateLabel = new JLabel("Date");
+        dateLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        
+        JTextField dateField = new JTextField(record.getDate().format(
+            java.time.format.DateTimeFormatter.ofPattern("MMMM dd, yyyy, EEEE")));
+        dateField.setEditable(false);
+        dateField.setBackground(new Color(245, 245, 245));
+        dateField.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+        
+        datePanel.add(dateLabel, BorderLayout.NORTH);
+        datePanel.add(dateField, BorderLayout.CENTER);
+        
+        // Reason panel
+        JPanel reasonPanel = new JPanel(new BorderLayout());
+        reasonPanel.setBackground(new Color(52, 73, 94));
+        reasonPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        
+        JLabel reasonHeaderLabel = new JLabel("💭 Enter your reason");
+        reasonHeaderLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        reasonHeaderLabel.setForeground(Color.WHITE);
+        reasonPanel.add(reasonHeaderLabel, BorderLayout.WEST);
+        
+        // Text area panel
+        JPanel textAreaPanel = new JPanel(new BorderLayout());
+        textAreaPanel.setBackground(Color.WHITE);
+        textAreaPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        
+        JTextArea reasonTextArea = new JTextArea(8, 30);
+        reasonTextArea.setFont(new Font("Arial", Font.PLAIN, 12));
+        reasonTextArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        reasonTextArea.setLineWrap(true);
+        reasonTextArea.setWrapStyleWord(true);
+        
+        // Pre-fill with existing reason if available
+        if (record.getRemarks() != null && !record.getRemarks().trim().isEmpty()) {
+            reasonTextArea.setText(record.getRemarks());
+        }
+        
+        JScrollPane textScrollPane = new JScrollPane(reasonTextArea);
+        textScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        textScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        
+        textAreaPanel.add(textScrollPane, BorderLayout.CENTER);
+        
+        // Button panel
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttonPanel.setBackground(Color.WHITE);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 20, 20));
+        
+        JButton submitButton = new JButton("📝 Submit");
+        submitButton.setFont(new Font("Arial", Font.BOLD, 12));
+        submitButton.setBackground(new Color(52, 152, 219));
+        submitButton.setForeground(Color.WHITE);
+        submitButton.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        submitButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
+        submitButton.addActionListener(e -> {
+            String reason = reasonTextArea.getText().trim();
+            if (reason.isEmpty()) {
+                // Show "Oops!" dialog
+                showOopsDialog();
+            } else {
+                // Update the attendance record with the reason
+                record.setRemarks(reason);
+                // TODO: Save to file/database
+                
+                // Show success message and close dialog
+                JOptionPane.showMessageDialog(dialog, 
+                    "Reason submitted successfully!", 
+                    "Success", 
+                    JOptionPane.INFORMATION_MESSAGE);
+                dialog.dispose();
+                
+                // Refresh the attendance view
+                showContent(new MenuItem("📌 Attendance", PortalUtils.createAttendanceSubList()));
+            }
+        });
+        
+        buttonPanel.add(submitButton);
+        
+        // Assemble the dialog
+        mainPanel.add(headerPanel, BorderLayout.NORTH);
+        
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.add(datePanel, BorderLayout.NORTH);
+        centerPanel.add(reasonPanel, BorderLayout.CENTER);
+        centerPanel.add(textAreaPanel, BorderLayout.SOUTH);
+        
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+        
+        dialog.add(mainPanel);
+        dialog.setVisible(true);
+    }
+    
+    /**
+     * Shows the "Oops!" dialog when no reason is entered
+     */
+    private void showOopsDialog() {
+        JDialog oopsDialog = new JDialog(this, "Reason/s of absences/tardiness in class: (9457)", true);
+        oopsDialog.setSize(400, 200);
+        oopsDialog.setLocationRelativeTo(this);
+        oopsDialog.setResizable(false);
+        
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        mainPanel.setBackground(Color.WHITE);
+        
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(20, 20, 10, 20);
+        
+        JLabel oopsLabel = new JLabel("Ooops!");
+        oopsLabel.setFont(new Font("Arial", Font.BOLD, 36));
+        oopsLabel.setForeground(new Color(100, 100, 100));
+        oopsLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        mainPanel.add(oopsLabel, gbc);
+        
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 20, 30, 20);
+        
+        JLabel messageLabel = new JLabel("Please select date/s of absence/tardy.");
+        messageLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        messageLabel.setForeground(new Color(100, 100, 100));
+        messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        mainPanel.add(messageLabel, gbc);
+        
+        oopsDialog.add(mainPanel);
+        oopsDialog.setVisible(true);
+        
+        // Auto-close after 2 seconds
+        Timer timer = new Timer(2000, e -> oopsDialog.dispose());
+        timer.setRepeats(false);
+        timer.start();
+    }
+
     /**
      * Refreshes attendance data (for future use when real-time updates are needed)
      */
