@@ -53,6 +53,14 @@ public class DataManager {
     public static boolean databaseExists() {
         return getDatabaseFile().exists();
     }
+
+	/**
+	 * Checks whether any credential store exists (Database.txt or UserPasswordID.txt)
+	 * @return true if either file exists, false otherwise
+	 */
+	public static boolean credentialsStoreExists() {
+		return getDatabaseFile().exists() || getUserPasswordFile().exists();
+	}
     
     /**
      * Authenticates user credentials against the database
@@ -60,36 +68,56 @@ public class DataManager {
      * @param password The password to authenticate
      * @return true if credentials are valid, false otherwise
      */
-    public static boolean authenticateUser(String studentID, String password) {
+	public static boolean authenticateUser(String studentID, String password) {
         try {
-            File databaseFile = getDatabaseFile();
-            if (!databaseFile.exists()) {
-                return false;
-            }
+			File databaseFile = getDatabaseFile();
+			if (databaseFile.exists()) {
+				try (BufferedReader reader = new BufferedReader(new FileReader(databaseFile))) {
+					String line;
+					while ((line = reader.readLine()) != null) {
+						// Skip empty lines
+						if (line.trim().isEmpty()) {
+							continue;
+						}
+						
+						// Handle lines with profile data (containing | separator)
+						String[] mainParts = line.split("\\|");
+						String basicInfo = mainParts[0]; // Everything before the |
+						
+						String[] parts = basicInfo.split(",");
+						if (parts.length >= 6) {
+							String storedID = parts[0].trim();
+							String storedPassword = parts[5].trim();
+							
+							if (studentID.equals(storedID) && password.equals(storedPassword)) {
+								return true;
+							}
+						}
+					}
+				}
+			}
 
-            try (BufferedReader reader = new BufferedReader(new FileReader(databaseFile))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // Skip empty lines
-                    if (line.trim().isEmpty()) {
-                        continue;
-                    }
-                    
-                    // Handle lines with profile data (containing | separator)
-                    String[] mainParts = line.split("\\|");
-                    String basicInfo = mainParts[0]; // Everything before the |
-                    
-                    String[] parts = basicInfo.split(",");
-                    if (parts.length >= 6) {
-                        String storedID = parts[0].trim();
-                        String storedPassword = parts[5].trim();
-                        
-                        if (studentID.equals(storedID) && password.equals(storedPassword)) {
-                            return true;
-                        }
-                    }
-                }
-            }
+			// Fallback: check simple credentials log if present
+			File credsFile = getUserPasswordFile();
+			if (credsFile.exists()) {
+				try (BufferedReader reader = new BufferedReader(new FileReader(credsFile))) {
+					String line;
+					while ((line = reader.readLine()) != null) {
+						if (line.trim().isEmpty()) continue;
+						// Expected format: "ID: <id> | Password: <password>"
+						// Be tolerant to spacing variations
+						String normalized = line.replace("ID:", "ID:").replace("Password:", "Password:");
+						String[] pair = normalized.split("\\|");
+						String idPart = pair.length > 0 ? pair[0] : "";
+						String passPart = pair.length > 1 ? pair[1] : "";
+						String storedID = idPart.replace("ID:", "").trim();
+						String storedPass = passPart.replace("Password:", "").trim();
+						if (studentID.equals(storedID) && password.equals(storedPass)) {
+							return true;
+						}
+					}
+				}
+			}
         } catch (IOException e) {
             System.err.println("Error reading database: " + e.getMessage());
         }
