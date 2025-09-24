@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
 
 public class ISLUStudentPortal extends JFrame {
     private JPanel mainPanel;
@@ -720,8 +721,8 @@ public class ISLUStudentPortal extends JFrame {
         minStart = roundDownToHalfHour(minStart);
         maxEnd = roundUpToHalfHour(maxEnd);
 
-        // Column names from subItems
-        String[] columnNames = {"","Time", "Monday","Tuesday","Wednesday","Thursday","Friday"};
+        // Column names for schedule table
+        String[] columnNames = {"Time", "Monday","Tuesday","Wednesday","Thursday","Friday"};
 
         // Build data rows
         List<Object[]> rows = new ArrayList<>();
@@ -734,7 +735,6 @@ public class ISLUStudentPortal extends JFrame {
             row[3] = courseLabelAtTime(courses, slot, "W");
             row[4] = courseLabelAtTime(courses, slot, "TH");
             row[5] = courseLabelAtTime(courses, slot, "F");
-            row[6] = courseLabelAtTime(courses, slot, "S");
             rows.add(row);
         }
 
