@@ -2574,6 +2574,16 @@ public class ISLUStudentPortal extends JFrame {
         // Beginning balance
         dataList.add(new Object[]{"", "BEGINNING BALANCE", String.format("P %.2f", amountDue + currentBalance)});
         
+        // Insert sample fee rows to mirror campus format
+        String sampleDate = new java.text.SimpleDateFormat("MM/dd/yyyy").format(new java.util.Date());
+        dataList.add(new Object[]{sampleDate, "TUITION FEE @820.00/u", "P 9,020.00"});
+        dataList.add(new Object[]{sampleDate, "TUITION FEE @1167.00/u", "P 10,503.00"});
+        dataList.add(new Object[]{sampleDate, "TUITION FEE @434.00/u", "P 1,302.00"});
+        dataList.add(new Object[]{sampleDate, "OTHER FEES", "P 6,784.00"});
+        dataList.add(new Object[]{sampleDate, "OTHER/LAB.FEE(S)", "P 14,064.00"});
+        dataList.add(new Object[]{sampleDate, "PMS WaterDrinkingSystem (V100486)", "P 60.00"});
+        dataList.add(new Object[]{sampleDate, "Internationalization Fee (V100487)", "P 150.00"});
+
         // Add payment transactions as receipts
         List<PaymentTransaction> transactions = DataManager.loadPaymentTransactions(studentID);
         for (PaymentTransaction transaction : transactions) {
@@ -2811,7 +2821,7 @@ public class ISLUStudentPortal extends JFrame {
             
             // Add action listener for payment processing
             final String channelName = channels[i];
-            channelButton.addActionListener(e -> showPaymentDialog(channelName));
+            channelButton.addActionListener(e -> showPaymentFlow(channelName));
             
             contentPanel.add(channelButton);
             contentPanel.add(Box.createVerticalStrut(10));
@@ -2954,6 +2964,144 @@ public class ISLUStudentPortal extends JFrame {
 
         paymentDialog.add(contentPanel, BorderLayout.CENTER);
         paymentDialog.setVisible(true);
+    }
+
+    /**
+     * Routes payment to channel-specific dialogs that reflect the screenshots
+     */
+    private void showPaymentFlow(String channelName) {
+        if (channelName.contains("UnionBank")) {
+            showUnionBankAmountDialog(channelName);
+            return;
+        }
+        if (channelName.contains("Dragonpay")) {
+            showDragonpayAmountDialog(channelName);
+            return;
+        }
+        // Fallback to generic dialog
+        showPaymentDialog(channelName);
+    }
+
+    private void showUnionBankAmountDialog(String channelName) {
+        JDialog dialog = new JDialog(this, "Payment through UPay by UnionBank", true);
+        dialog.setSize(420, 220);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        header.setBackground(new Color(10, 45, 90));
+        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        JLabel h = new JLabel("AMOUNT TO PAY");
+        h.setForeground(Color.WHITE);
+        h.setFont(new Font("Arial", Font.BOLD, 14));
+        header.add(h);
+        dialog.add(header, BorderLayout.NORTH);
+
+        JPanel body = new JPanel();
+        body.setBackground(Color.WHITE);
+        body.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+
+        JTextField amountField = new JTextField(String.valueOf((int)Math.round(Math.max(1, amountDue))));
+        amountField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        amountField.setHorizontalAlignment(SwingConstants.CENTER);
+        body.add(amountField);
+        body.add(Box.createVerticalStrut(15));
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton proceed = new JButton("Proceed");
+        proceed.addActionListener(e -> {
+            if (processPayment("1111 2222 3333 4444", "123", "12/29", studentName, amountField.getText(), channelName)) {
+                dialog.dispose();
+            }
+        });
+        buttons.add(proceed);
+        body.add(buttons);
+
+        dialog.add(body, BorderLayout.CENTER);
+        dialog.setVisible(true);
+    }
+
+    private void showDragonpayAmountDialog(String channelName) {
+        JDialog dialog = new JDialog(this, "Payment through Dragon Pay", true);
+        dialog.setSize(520, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        header.setBackground(new Color(10, 45, 90));
+        header.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        JLabel h = new JLabel("AMOUNT TO PAY");
+        h.setForeground(Color.WHITE);
+        h.setFont(new Font("Arial", Font.BOLD, 14));
+        header.add(h);
+        dialog.add(header, BorderLayout.NORTH);
+
+        JPanel body = new JPanel();
+        body.setBackground(Color.WHITE);
+        body.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+
+        JTextField amountField = new JTextField(String.valueOf((int)Math.round(Math.max(1, amountDue))));
+        amountField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        amountField.setHorizontalAlignment(SwingConstants.CENTER);
+        body.add(amountField);
+        body.add(Box.createVerticalStrut(10));
+
+        JComboBox<String> method = new JComboBox<>(new String[]{"GCash", "Maya", "GrabPay"});
+        method.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        body.add(method);
+        body.add(Box.createVerticalStrut(6));
+
+        JLabel note = new JLabel("Note: There will be a twenty five pesos (P 25.00) service charge.");
+        note.setForeground(new Color(120, 120, 120));
+        body.add(note);
+        body.add(Box.createVerticalStrut(12));
+
+        JPanel totalPanel = new JPanel(new BorderLayout());
+        totalPanel.setBackground(Color.WHITE);
+        JLabel totalLabel = new JLabel("AMOUNT TO PAY + CHARGES");
+        totalLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        totalPanel.add(totalLabel, BorderLayout.NORTH);
+        JTextField totalField = new JTextField();
+        totalField.setEditable(false);
+        totalField.setHorizontalAlignment(SwingConstants.CENTER);
+        totalField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        totalPanel.add(totalField, BorderLayout.CENTER);
+        body.add(totalPanel);
+
+        Runnable recompute = () -> {
+            try {
+                double base = Double.parseDouble(amountField.getText());
+                double fee = 25.00;
+                double extra = 0.00; // per-channel extra could be added
+                double total = base + fee + extra;
+                totalField.setText(String.format("%.2f", total));
+            } catch (Exception ex) {
+                totalField.setText("");
+            }
+        };
+        amountField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { recompute.run(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { recompute.run(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { recompute.run(); }
+        });
+        recompute.run();
+
+        body.add(Box.createVerticalStrut(15));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton proceed = new JButton("Proceed");
+        proceed.addActionListener(e -> {
+            String pay = totalField.getText().isEmpty() ? amountField.getText() : totalField.getText();
+            if (processPayment("1111 2222 3333 4444", "123", "12/29", studentName, pay, channelName + " (" + method.getSelectedItem() + ")")) {
+                dialog.dispose();
+            }
+        });
+        buttons.add(proceed);
+        body.add(buttons);
+
+        dialog.add(body, BorderLayout.CENTER);
+        dialog.setVisible(true);
     }
 
     /**
