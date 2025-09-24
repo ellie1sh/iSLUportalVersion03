@@ -302,8 +302,10 @@ function updateGradesSection() {
 // Load grades
 async function loadGrades() {
     const token = localStorage.getItem('authToken');
-    const gradesContent = document.getElementById('gradesContent');
+    const tableBody = document.getElementById('gradesTableBody');
+    if (!tableBody) return;
 
+    // placeholder while backend is being integrated
     try {
         const response = await fetch(`${API_BASE}/api/student/grades`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -311,38 +313,99 @@ async function loadGrades() {
 
         if (response.ok) {
             const grades = await response.json();
-            displayGrades(grades, gradesContent);
+            renderGradesTable(grades);
         } else {
-            gradesContent.innerHTML = '<div class="error">Unable to load grades at this time.</div>';
+            tableBody.innerHTML = '<tr><td colspan="8" class="empty-cell">Unable to load grades at this time.</td></tr>';
         }
     } catch (error) {
-        console.error('Failed to load grades:', error);
-        gradesContent.innerHTML = '<div class="error">Failed to load grades.</div>';
+        // Until backend is ready, show placeholder rows based on sample layout
+        console.warn('Grades API not available yet. Showing placeholder rows.');
+        const placeholder = getPlaceholderGrades();
+        renderGradesTable(placeholder);
     }
 }
 
-// Display grades
-function displayGrades(grades, container) {
+// Render grades into the table layout
+function renderGradesTable(grades) {
+    const tableBody = document.getElementById('gradesTableBody');
+    if (!tableBody) return;
+
+    if (!grades || grades.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="empty-cell">No grades available yet.</td></tr>';
+        return;
+    }
+
+    let rows = '';
+    grades.forEach(g => {
+        rows += `
+            <tr>
+                <td>${g.class_code || ''}</td>
+                <td>${g.course_number || ''}</td>
+                <td class="center">${g.units != null ? g.units : ''}</td>
+                <td class="center">${g.prelim_grade != null ? g.prelim_grade : 'Not Yet Submitted'}</td>
+                <td class="center">${g.midterm_grade != null ? g.midterm_grade : ''}</td>
+                <td class="center">${g.tentative_final_grade != null ? g.tentative_final_grade : ''}</td>
+                <td class="center">${g.final_grade != null ? g.final_grade : 'Not Yet Submitted'}</td>
+                <td class="right">${g.weight || ''}</td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = rows;
+}
+
+// Temporary placeholder data to match the screenshot layout
+function getPlaceholderGrades() {
+    return [
+        { class_code: '7024', course_number: 'NSTP-CWTS 1', units: 3 },
+        { class_code: '9454', course_number: 'GSTS', units: 3 },
+        { class_code: '9455', course_number: 'GENM', units: 3 },
+        { class_code: '9456', course_number: 'CFE 103', units: 3 },
+        { class_code: '9457', course_number: 'IT 211', units: 3 },
+        { class_code: '9458', course_number: 'IT 212', units: 2 },
+        { class_code: '9458B', course_number: 'IT 212L', units: 1 },
+        { class_code: '9459', course_number: 'IT 213', units: 2 },
+        { class_code: '9459B', course_number: 'IT 213L', units: 1 },
+        { class_code: '9547', course_number: 'FIT 0A', units: 2 }
+    ];
+}
+
+// Build a compact table for the modal using the same schema
+function renderGradesInModal(grades, container) {
     if (!grades || grades.length === 0) {
         container.innerHTML = '<div class="loading">No grades available yet.</div>';
         return;
     }
-
-    let gradesHTML = '';
-    grades.forEach(grade => {
-        const prelimGrade = grade.prelim_grade || 'TBA';
-        gradesHTML += `
-            <div class="grade-item">
-                <div class="subject-info">
-                    <div class="subject-code">${grade.subject_code}</div>
-                    <div class="subject-name">${grade.subject_name}</div>
-                </div>
-                <div class="grade-value">${prelimGrade}</div>
-            </div>
+    let html = `
+        <table class="grades-table" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Class Code</th>
+                    <th>Course Number</th>
+                    <th>Units</th>
+                    <th>Prelim Grade</th>
+                    <th>Midterm Grade</th>
+                    <th>Tentative Final Grade</th>
+                    <th>Final Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    grades.forEach(g => {
+        html += `
+            <tr>
+                <td>${g.class_code || ''}</td>
+                <td>${g.course_number || ''}</td>
+                <td class="center">${g.units != null ? g.units : ''}</td>
+                <td class="center">${g.prelim_grade != null ? g.prelim_grade : 'Not Yet Submitted'}</td>
+                <td class="center">${g.midterm_grade != null ? g.midterm_grade : ''}</td>
+                <td class="center">${g.tentative_final_grade != null ? g.tentative_final_grade : ''}</td>
+                <td class="center">${g.final_grade != null ? g.final_grade : 'Not Yet Submitted'}</td>
+            </tr>
         `;
     });
-
-    container.innerHTML = gradesHTML;
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 }
 
 // Open payment modal
@@ -523,13 +586,15 @@ async function viewGrades() {
 
         if (response.ok) {
             const grades = await response.json();
-            displayGrades(grades, gradesModalContent);
+            renderGradesInModal(grades, gradesModalContent);
         } else {
             gradesModalContent.innerHTML = '<div class="error">Unable to access grades. Please ensure your prelim payment is completed.</div>';
         }
     } catch (error) {
         console.error('Failed to load grades:', error);
-        gradesModalContent.innerHTML = '<div class="error">Failed to load grades.</div>';
+        // fallback to placeholder
+        const placeholder = getPlaceholderGrades();
+        renderGradesInModal(placeholder, gradesModalContent);
     }
 }
 

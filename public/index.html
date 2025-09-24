@@ -100,12 +100,52 @@
 
                 <!-- Grades Section (only visible when paid) -->
                 <div class="grades-section" id="gradesSection" style="display: none;">
-                    <div class="grades-header">
-                        <h3>📊 Your Grades</h3>
-                        <p>Prelim grades are now available</p>
+                    <div class="grades-header-bar">
+                        <span class="grades-title">Grades (FIRST SEMESTER, 2025-2026)</span>
                     </div>
-                    <div class="grades-content" id="gradesContent">
-                        <div class="loading">Loading grades...</div>
+                    <div class="grades-table-wrap">
+                        <table class="grades-table">
+                            <thead>
+                                <tr>
+                                    <th>Class Code</th>
+                                    <th>Course Number</th>
+                                    <th>Units</th>
+                                    <th>Prelim Grade</th>
+                                    <th>Midterm Grade</th>
+                                    <th>Tentative Final Grade</th>
+                                    <th>Final Grade</th>
+                                    <th>Weights</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gradesTableBody">
+                                <tr>
+                                    <td colspan="8" class="empty-cell">Loading grades...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="grades-note">
+                            <strong>NOTE:</strong> Deadline of submission for completion of Students is <strong>February 04, 2026</strong>. NC due to NFE/INC if not completed, the final grades shall become permanent.
+                        </div>
+
+                        <div class="grades-legend">
+                            <div class="legend-left">
+                                <div class="legend-title">LEGEND:</div>
+                                <div class="legend-row"><span>P</span><span>Passed</span></div>
+                                <div class="legend-row"><span>INC</span><span>Incomplete</span></div>
+                                <div class="legend-row"><span>D</span><span>Dropped</span></div>
+                                <div class="legend-row"><span>NC</span><span>No Credit</span></div>
+                            </div>
+                            <div class="legend-right">
+                                <div class="legend-subtitle">FOR UNDERGRADUATE</div>
+                                <div class="legend-row"><span>Passing Grade</span><span>75%</span></div>
+                                <div class="legend-row"><span>Failure</span><span>Below 75%</span></div>
+                                <div class="legend-divider"></div>
+                                <div class="legend-subtitle">FOR GRADUATE SCHOOL</div>
+                                <div class="legend-row"><span>Passing Grade</span><span>85%</span></div>
+                                <div class="legend-row"><span>Failure</span><span>Below 85%</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
