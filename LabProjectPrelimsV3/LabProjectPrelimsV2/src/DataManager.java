@@ -16,6 +16,7 @@ public class DataManager {
     private static final String ATTENDANCE_RECORDS_FILE = "attendanceRecords.txt";
     private static final String COURSE_SCHEDULES_FILE = "courseSchedules.txt";
     private static final String GRADE_RECORDS_FILE = "gradeRecords.txt";
+    private static final String READMISSION_LOGS_FILE = "readmissionLogs.txt";
     
     /**
      * Resolve a data file by searching from the working directory and then walking up
@@ -55,6 +56,7 @@ public class DataManager {
     private static File getAttendanceRecordsFile() { return resolveFile(ATTENDANCE_RECORDS_FILE); }
     private static File getCourseSchedulesFile() { return resolveFile(COURSE_SCHEDULES_FILE); }
     private static File getGradeRecordsFile() { return resolveFile(GRADE_RECORDS_FILE); }
+    private static File getReadmissionLogsFile() { return resolveFile(READMISSION_LOGS_FILE); }
 
     public static boolean databaseExists() {
         return getDatabaseFile().exists();
@@ -539,6 +541,162 @@ public class DataManager {
         }
         
         return summaryMap;
+    }
+    
+    /**
+     * Returns a mapping of subjects to their absence/tardy attendance records for a given student.
+     * The map key is formatted as "subjectCode::subjectName" for convenient display and parsing.
+     */
+    public static Map<String, List<AttendanceRecord>> getAbsencesAndTardiesBySubject(String studentID) {
+        List<AttendanceRecord> records = loadAttendanceRecords(studentID);
+        Map<String, List<AttendanceRecord>> bySubject = new LinkedHashMap<>();
+        for (AttendanceRecord record : records) {
+            String status = record.getStatus();
+            if (!"Absent".equalsIgnoreCase(status) && !"Late".equalsIgnoreCase(status)) {
+                continue;
+            }
+            String key = record.getSubjectCode() + "::" + record.getSubjectName();
+            bySubject.computeIfAbsent(key, k -> new ArrayList<>()).add(record);
+        }
+        // Sort records per subject by date ascending
+        for (List<AttendanceRecord> list : bySubject.values()) {
+            list.sort(java.util.Comparator.comparing(AttendanceRecord::getDate));
+        }
+        return bySubject;
+    }
+    
+    /**
+     * Applies a reason/remark to specific absence/tardy records for a subject and student.
+     * This updates attendanceRecords.txt in-place.
+     * @param studentID The student ID
+     * @param subjectCode The subject code
+     * @param subjectName The subject name
+     * @param dates Dates to update
+     * @param reason Reason/remarks to store
+     * @return true if file updated successfully
+     */
+    public static boolean applyReasonForAbsenceTardy(String studentID, String subjectCode, String subjectName,
+                                                     java.util.List<java.time.LocalDate> dates, String reason) {
+        try {
+            File attendanceFile = getAttendanceRecordsFile();
+            if (!attendanceFile.exists()) {
+                return false;
+            }
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy");
+            java.util.Set<String> targetDates = new java.util.HashSet<>();
+            for (java.time.LocalDate d : dates) {
+                targetDates.add(d.format(formatter));
+            }
+
+            java.util.List<String> updatedLines = new java.util.ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new FileReader(attendanceFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                        updatedLines.add(line);
+                        continue;
+                    }
+                    String[] parts = line.split(",");
+                    if (parts.length >= 6) {
+                        String recStudent = parts[0].trim();
+                        String recSubjectCode = parts[1].trim();
+                        String recSubjectName = parts[2].trim();
+                        String recDateStr = parts[3].trim();
+                        String recStatus = parts[4].trim();
+                        if (studentID.equals(recStudent)
+                                && subjectCode.equals(recSubjectCode)
+                                && recSubjectName.equals(recSubjectName)
+                                && ("Absent".equalsIgnoreCase(recStatus) || "Late".equalsIgnoreCase(recStatus))
+                                && targetDates.contains(recDateStr)) {
+                            // Overwrite remarks (parts[5])
+                            if (parts.length == 6) {
+                                parts[5] = reason.replace('\n', ' ').replace('\r', ' ');
+                                line = String.join(",", parts);
+                            } else {
+                                // Rebuild safely from parsed elements
+                                line = recStudent + "," + recSubjectCode + "," + recSubjectName + "," +
+                                        recDateStr + "," + recStatus + "," + reason.replace('\n', ' ').replace('\r', ' ');
+                            }
+                        }
+                    }
+                    updatedLines.add(line);
+                }
+            }
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(attendanceFile))) {
+                for (String l : updatedLines) {
+                    writer.write(l);
+                    writer.newLine();
+                }
+            }
+            return true;
+        } catch (IOException e) {
+            System.err.println("Error applying reason: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Append a readmission log entry for each absent/tardy date claimed with a reason.
+     */
+    public static void logReadmission(String studentID, String subjectCode, String subjectName,
+                                      java.time.LocalDate dateAbsent, String reason) {
+        try {
+            File logFile = getReadmissionLogsFile();
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.time.format.DateTimeFormatter iso = java.time.format.DateTimeFormatter.ISO_DATE;
+            String status = "Excused"; // default status for claimed reason
+            String entry = studentID + "," + subjectCode + "," + subjectName + "," +
+                    today.format(iso) + "," + dateAbsent.format(iso) + "," + status + "," +
+                    reason.replace('\n', ' ').replace('\r', ' ');
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(logFile, true))) {
+                // Add header if file is new/empty
+                if (logFile.length() == 0) {
+                    writer.write("=== READMISSION LOGS ===");
+                    writer.newLine();
+                    writer.write("Format: StudentID,SubjectCode,SubjectName,DateReadmitted,DateAbsent,Status,Reason");
+                    writer.newLine();
+                    writer.newLine();
+                }
+                writer.write(entry);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            System.err.println("Error logging readmission: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Loads readmission records for a student from the readmission logs file.
+     */
+    public static java.util.List<String[]> loadReadmissionLogs(String studentID) {
+        java.util.List<String[]> logs = new java.util.ArrayList<>();
+        try {
+            File logFile = getReadmissionLogsFile();
+            if (!logFile.exists()) {
+                return logs;
+            }
+            try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
+                        continue;
+                    }
+                    String[] parts = line.split(",", 7);
+                    if (parts.length >= 7 && studentID.equals(parts[0].trim())) {
+                        logs.add(new String[]{
+                                parts[3].trim(), // DateReadmitted
+                                parts[4].trim(), // DateAbsent
+                                parts[5].trim(), // Status
+                                parts[6].trim(), // Reason
+                                "" // Remarks placeholder
+                        });
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading readmission logs: " + e.getMessage());
+        }
+        return logs;
     }
     
     /**
