@@ -1233,16 +1233,16 @@ public class ISLUStudentPortal extends JFrame {
                 return;
             }
             boolean ok = DataManager.applyReasonForAbsenceTardy(studentID, subjectCode, subjectName, dates, reason);
-            if (ok) {
-                for (java.time.LocalDate d : dates) {
-                    DataManager.logReadmission(studentID, subjectCode, subjectName, d, reason);
-                }
-                dialog.dispose();
-                showContent(new MenuItem("📌 Attendance", PortalUtils.createAttendanceSubList()));
-                JOptionPane.showMessageDialog(this, "Your reason has been submitted.", "Submitted", JOptionPane.INFORMATION_MESSAGE);
-            } else {
+            if (!ok) {
                 JOptionPane.showMessageDialog(dialog, "Failed to submit reason.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
+            for (java.time.LocalDate d : dates) {
+                DataManager.logReadmission(studentID, subjectCode, subjectName, d, reason);
+            }
+            dialog.dispose();
+            showContent(new MenuItem("📌 Attendance", PortalUtils.createAttendanceSubList()));
+            JOptionPane.showMessageDialog(this, "Your reason has been submitted and forwarded for faculty review.", "Submitted", JOptionPane.INFORMATION_MESSAGE);
         });
         buttons.add(submit);
         main.add(Box.createVerticalStrut(8));

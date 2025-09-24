@@ -566,73 +566,14 @@ public class DataManager {
     }
     
     /**
-     * Applies a reason/remark to specific absence/tardy records for a subject and student.
-     * This updates attendanceRecords.txt in-place.
-     * @param studentID The student ID
-     * @param subjectCode The subject code
-     * @param subjectName The subject name
-     * @param dates Dates to update
-     * @param reason Reason/remarks to store
-     * @return true if file updated successfully
+     * Placeholder for student-side reason submission.
+     * Does NOT modify attendance records; faculty backend will do the update.
+     * We simply return true to indicate the student request can proceed to logging.
      */
     public static boolean applyReasonForAbsenceTardy(String studentID, String subjectCode, String subjectName,
                                                      java.util.List<java.time.LocalDate> dates, String reason) {
-        try {
-            File attendanceFile = getAttendanceRecordsFile();
-            if (!attendanceFile.exists()) {
-                return false;
-            }
-            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy");
-            java.util.Set<String> targetDates = new java.util.HashSet<>();
-            for (java.time.LocalDate d : dates) {
-                targetDates.add(d.format(formatter));
-            }
-
-            java.util.List<String> updatedLines = new java.util.ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new FileReader(attendanceFile))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    if (line.trim().isEmpty() || line.startsWith("===") || line.startsWith("Format:")) {
-                        updatedLines.add(line);
-                        continue;
-                    }
-                    String[] parts = line.split(",");
-                    if (parts.length >= 6) {
-                        String recStudent = parts[0].trim();
-                        String recSubjectCode = parts[1].trim();
-                        String recSubjectName = parts[2].trim();
-                        String recDateStr = parts[3].trim();
-                        String recStatus = parts[4].trim();
-                        if (studentID.equals(recStudent)
-                                && subjectCode.equals(recSubjectCode)
-                                && recSubjectName.equals(recSubjectName)
-                                && ("Absent".equalsIgnoreCase(recStatus) || "Late".equalsIgnoreCase(recStatus))
-                                && targetDates.contains(recDateStr)) {
-                            // Overwrite remarks (parts[5])
-                            if (parts.length == 6) {
-                                parts[5] = reason.replace('\n', ' ').replace('\r', ' ');
-                                line = String.join(",", parts);
-                            } else {
-                                // Rebuild safely from parsed elements
-                                line = recStudent + "," + recSubjectCode + "," + recSubjectName + "," +
-                                        recDateStr + "," + recStatus + "," + reason.replace('\n', ' ').replace('\r', ' ');
-                            }
-                        }
-                    }
-                    updatedLines.add(line);
-                }
-            }
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(attendanceFile))) {
-                for (String l : updatedLines) {
-                    writer.write(l);
-                    writer.newLine();
-                }
-            }
-            return true;
-        } catch (IOException e) {
-            System.err.println("Error applying reason: " + e.getMessage());
-            return false;
-        }
+        // Intentionally no-op to keep student-side read-only for attendance.
+        return true;
     }
     
     /**
