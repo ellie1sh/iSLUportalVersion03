@@ -401,60 +401,61 @@ body {
 .bukas-btn { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
 
 /* Grades Section */
-.grades-section {
-    margin-top: 30px;
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    border-radius: 8px;
-    overflow: hidden;
-}
+/* Grades Section - redesigned to table layout like the portal screenshot */
+.grades-section { margin-top: 30px; }
 
-.grades-header {
-    padding: 15px;
-    text-align: center;
-}
-
-.grades-header h3 {
-    margin-bottom: 5px;
-}
-
-.grades-content {
-    background: white;
-    color: #333;
-    padding: 15px;
-}
-
-.grade-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.grade-item:last-child {
-    border-bottom: none;
-}
-
-.subject-info {
-    flex: 1;
-}
-
-.subject-code {
-    font-weight: bold;
+.grades-header-bar {
+    background: linear-gradient(135deg, #2c5aa0 0%, #1e3d6f 100%);
+    color: #fff;
+    padding: 12px 15px;
+    font-weight: 600;
     font-size: 14px;
 }
 
-.subject-name {
-    font-size: 12px;
-    color: #666;
+.grades-table-wrap { background: #fff; border: 1px solid #dee2e6; border-top: none; }
+
+.grades-table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-.grade-value {
-    font-weight: bold;
-    font-size: 16px;
-    color: #28a745;
+.grades-table th, .grades-table td {
+    font-size: 13px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e9ecef;
 }
+
+.grades-table thead th {
+    background: #e9ecef;
+    color: #495057;
+    text-align: left;
+}
+
+.grades-table tbody tr:nth-child(even) { background: #f8f9fa; }
+
+.grades-table .center { text-align: center; }
+.grades-table .right { text-align: right; }
+.grades-table .empty-cell { text-align: center; color: #666; padding: 18px; font-style: italic; }
+
+.grades-note {
+    padding: 12px 15px;
+    font-size: 12px;
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.grades-legend {
+    display: flex;
+    gap: 40px;
+    padding: 15px;
+    font-size: 12px;
+}
+
+.legend-left .legend-title { font-weight: 700; margin-bottom: 6px; }
+.legend-row { display: flex; gap: 10px; margin-bottom: 4px; }
+.legend-right { min-width: 260px; }
+.legend-subtitle { font-weight: 700; margin-top: 6px; margin-bottom: 4px; }
+.legend-divider { height: 1px; background: #e9ecef; margin: 6px 0; }
 
 /* Modal Styles */
 .modal {
