@@ -224,6 +224,26 @@ public class PaymentService {
     }
 
     /**
+     * Process payment with specific amount and method
+     */
+    public boolean processPayment(String studentId, double amount, String paymentMethodName) {
+        // Find payment method by name
+        Optional<PaymentMethod> methodOpt = paymentMethods.stream()
+            .filter(method -> method.getMethodName().equals(paymentMethodName))
+            .findFirst();
+        
+        if (methodOpt.isEmpty()) {
+            return false;
+        }
+        
+        PaymentMethod method = methodOpt.get();
+        String paymentReference = IdGenerator.generatePaymentReference();
+        
+        // Process the payment through account service
+        return accountService.processPayment(studentId, amount, method.getMethodCode(), paymentReference);
+    }
+
+    /**
      * Get payment method display info
      */
     public String getPaymentMethodInfo(String methodCode) {
